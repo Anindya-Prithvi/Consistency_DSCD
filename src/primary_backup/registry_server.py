@@ -92,14 +92,14 @@ if __name__ == "__main__":
     # get sys args
     
     agr = argparse.ArgumentParser()
-    agr.add_argument("--p",   metavar="PORT", type=int, help="port number")
-    agr.add_argument("--max", type=int, help="maximum number of servers")
-    agr.add_argument("--log", type=str, help="log file name")
+    agr.add_argument("--port",type=int, help="port number", default=PORT)
+    agr.add_argument("--max", type=int, help="maximum number of servers", default=MAXSERVERS)
+    agr.add_argument("--log", type=str, help="log file name", default=LOGFILE)
 
     args = agr.parse_args()
 
     PORT = args.port
-    MAXSERVERS = args.max_servers
+    MAXSERVERS = args.max
     LOGFILE = args.log
 
     logging.basicConfig(filename=LOGFILE, level=logging.INFO)
