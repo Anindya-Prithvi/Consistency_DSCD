@@ -15,8 +15,6 @@
 # Majority of code adopted from our implementation of assignment 1 (obviosly)
 from concurrent import futures
 import logging
-import re
-import sys
 import grpc
 import argparse
 import registry_server_pb2
