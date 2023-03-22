@@ -32,10 +32,10 @@ LOGFILE = None  # default
 REGISTRY_ADDR = "localhost:1337"
 OPTIONS = """\
 Please choose from the following options:
-    1. Write
-    2. Read
-    3. Delete
-    4. Exit\
+    1. WRITE
+    2. READ
+    3. DELETE
+    4. EXIT\
 """
 
 def get_served():
@@ -61,7 +61,22 @@ def get_served():
         except Exception as e:
             logger.critical("Something went wrong", e)
             exit(1)
-
+        if choice == 1:
+            # write
+            #TODO: add write logic
+            pass
+        elif choice == 2:
+            # read
+            #TODO: add read logic
+            pass
+        elif choice == 3:
+            # delete
+            #TODO: add delete logic
+            pass
+        elif choice == 4:
+            # exit
+            logger.info("Exiting...")
+            exit(0)
 
 if __name__ == "__main__":
     # get sys args
