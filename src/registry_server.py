@@ -1,14 +1,14 @@
 # Registry server:
-# 1. The registry server resides at a known address (ip + port)
-# 2. The registry server stores each replica’s ip address (localhost) and port number -
-# localhost:8888
-# 3. Whenever a new replica comes up, it informs the registry server of its liveness
-    # a. Each replica shares its ip address and port with the registry server.
-    # b. Registry server marks the first replica as the primary replica.
-    # c. In response to each replica, the registry server always sends the information (ip +
-    # port) about the primary server.
-    # d. The registry server also needs to tell the primary replica about the joining of a
-    # new replica (send the ip + port of the new replica to the primary replica).
+# [done] 1. The registry server resides at a known address (ip + port)
+# [done] 2. The registry server stores each replica’s ip address (localhost) and port number -
+#           localhost:8888
+# [done] 3. Whenever a new replica comes up, it informs the registry server of its liveness
+# [done]    a. Each replica shares its ip address and port with the registry server.
+# [done]    b. Registry server marks the first replica as the primary replica.
+# [done]    c. In response to each replica, the registry server always sends the information (ip +
+#              port) about the primary server.
+#           d. The registry server also needs to tell the primary replica about the joining of a
+#               new replica (send the ip + port of the new replica to the primary replica).
 # 4. A client should get the list of replicas (list of ip address + port) from the registry server on
 # startup.
 
@@ -26,6 +26,7 @@ logger.setLevel(logging.INFO)
 MAXSERVERS = 5  # default, changeable by command line arg
 
 registered = registry_server_pb2.Server_book()
+primary_replica = None
 
 
 class Maintain(registry_server_pb2_grpc.MaintainServicer):
@@ -40,10 +41,14 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
             i.name == request.name or i.addr == request.addr for i in registered.servers
         ):
             return registry_server_pb2.Success(value=False)
-        new_server = registered.servers.add()
-        new_server.name = request.name
-        new_server.addr = request.addr
-        return registry_server_pb2.Success(value=True)
+        
+        if primary_replica is None:
+            primary_replica = (request.ip, request.port)        
+        else:
+            new_server = registered.servers.add()
+            new_server.name = request.name
+            new_server.addr = request.addr
+        return registry_server_pb2.Server_information(ip = primary_replica[0], port = primary_replica[1])
 
     def GetServerList(self, request, context):
         logger.info(

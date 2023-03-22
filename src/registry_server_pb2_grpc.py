@@ -18,7 +18,7 @@ class MaintainStub(object):
         self.RegisterServer = channel.unary_unary(
                 '/Maintain/RegisterServer',
                 request_serializer=registry__server__pb2.Server_information.SerializeToString,
-                response_deserializer=registry__server__pb2.Success.FromString,
+                response_deserializer=registry__server__pb2.Server_information.FromString,
                 )
         self.GetServerList = channel.unary_unary(
                 '/Maintain/GetServerList',
@@ -51,7 +51,7 @@ def add_MaintainServicer_to_server(servicer, server):
             'RegisterServer': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterServer,
                     request_deserializer=registry__server__pb2.Server_information.FromString,
-                    response_serializer=registry__server__pb2.Success.SerializeToString,
+                    response_serializer=registry__server__pb2.Server_information.SerializeToString,
             ),
             'GetServerList': grpc.unary_unary_rpc_method_handler(
                     servicer.GetServerList,
@@ -82,7 +82,7 @@ class Maintain(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/Maintain/RegisterServer',
             registry__server__pb2.Server_information.SerializeToString,
-            registry__server__pb2.Success.FromString,
+            registry__server__pb2.Server_information.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
