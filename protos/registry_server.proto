@@ -26,10 +26,13 @@ message Server_book {
     repeated Server_information servers = 1;
 }
 
+/// Empty message
+message Empty {}
+
 /// Maintains the Server_book and fetches servers for incoming clients
 service Maintain {
     /// register a server with it's name and address, return a success value
     rpc RegisterServer (Server_information) returns (Server_information);
     /// get the server list for a client who may want to know about existing servers
-    rpc GetServerList (Client_information) returns (Server_book);
+    rpc GetServerList (Empty) returns (Server_book);
 }
