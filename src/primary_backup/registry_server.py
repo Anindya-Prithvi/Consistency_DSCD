@@ -43,13 +43,12 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
         ):
             return registry_server_pb2.Success(value=False)
         
+        registered.servers.add(name = request.name, addr = request.addr)
         if primary_replica is None:
-            primary_replica = (request.ip, request.port)        
+            primary_replica = (request.ip, request.port)
         else:
-            new_server = registered.servers.add()
-            new_server.name = request.name
-            new_server.addr = request.addr
             #TODO: inform primary replica
+            pass
 
         return registry_server_pb2.Server_information(ip = primary_replica[0], port = primary_replica[1])
 
