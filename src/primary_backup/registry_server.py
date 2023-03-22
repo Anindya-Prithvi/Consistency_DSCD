@@ -54,7 +54,7 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
 
     def GetServerList(self, request, context):
         logger.info(
-            "SERVER LIST REQUEST FROM %s with id %s",
+            "SERVER LIST REQUEST FROM %s",
             context.peer(),
         )
         return registered

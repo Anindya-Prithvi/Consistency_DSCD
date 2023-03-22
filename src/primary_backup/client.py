@@ -30,15 +30,37 @@ logger = logging.getLogger(f"client-{str(_client_id)[:6]}")
 logger.setLevel(logging.INFO)
 LOGFILE = None  # default
 REGISTRY_ADDR = "localhost:1337"
+OPTIONS = """\
+Please choose from the following options:
+    1. Write
+    2. Read
+    3. Delete
+    4. Exit\
+"""
 
 def get_served():
     #TODO: add receiving logic
     # fetch replicas from registry server
+    known_servers = []
     with grpc.insecure_channel(REGISTRY_ADDR) as channel:
         stub = registry_server_pb2_grpc.MaintainStub(channel)
         response = stub.GetServerList(registry_server_pb2.Empty())
         logger.info(f"Got server list from registry server {response.servers}")
-
+        known_servers = response.servers
+    
+    while True:
+        # give user options of read write and delete
+        logger.info(OPTIONS)
+        try:
+            choice = int(input("Enter your choice: "))
+            if choice > 4 or choice < 1:
+                raise ValueError
+        except ValueError:
+            logger.error("Invalid choice")
+            continue
+        except Exception as e:
+            logger.critical("Something went wrong", e)
+            exit(1)
 
 
 if __name__ == "__main__":
