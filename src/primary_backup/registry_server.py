@@ -51,6 +51,8 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
             new_server = registered.servers.add()
             new_server.name = request.name
             new_server.addr = request.addr
+            #TODO: inform primary replica
+
         return registry_server_pb2.Server_information(ip = primary_replica[0], port = primary_replica[1])
 
     def GetServerList(self, request, context):
