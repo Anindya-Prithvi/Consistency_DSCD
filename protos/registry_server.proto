@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+/// Stores the name and address of the server (used for registry and lookup)
+message Server_information {
+    /// name of server (like channels on discord)
+    optional string name = 1;
+    /// address of server, e.g. [::1]:12000
+    optional string addr = 2;
+}
+
+/// Stores the UUID1 of client
+message Client_information {
+    /// contains the UUID
+    optional string id = 1;
+}
+
+/// Success values of RPC (maybe moved to a more generic proto)
+message Success {
+    /// True false value
+    optional bool value = 1;
+}
+
+/// Stores the list of servers known to registrar
+message Server_book {
+    /// 'servers' is just a list/iterable
+    repeated Server_information servers = 1;
+}
+
+/// Maintains the Server_book and fetches servers for incoming clients
+service Maintain {
+    /// register a server with it's name and address, return a success value
+    rpc RegisterServer (Server_information) returns (Success);
+    /// get the server list for a client who may want to know about existing servers
+    rpc GetServerList (Client_information) returns (Server_book);
+}
