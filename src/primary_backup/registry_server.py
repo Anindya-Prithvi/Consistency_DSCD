@@ -15,15 +15,18 @@
 # Majority of code adopted from our implementation of assignment 1 (obviosly)
 from concurrent import futures
 import logging
-
+import re
 import sys
 import grpc
+import argparse
 import registry_server_pb2
 import registry_server_pb2_grpc
 
 logger = logging.getLogger("registrar")
 logger.setLevel(logging.INFO)
 MAXSERVERS = 5  # default, changeable by command line arg
+PORT = 1337     # default
+LOGFILE = None  # default
 
 registered = registry_server_pb2.Server_book()
 primary_replica = None
@@ -60,24 +63,45 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
 
 
 def serve():
-    port = "1337"
+    port = str(PORT)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     registry_server_pb2_grpc.add_MaintainServicer_to_server(Maintain(), server)
     server.add_insecure_port("[::]:" + port) #no TLS moment
     server.start()
-    print("Registry started, listening on all interfaces at port: " + port)
-    server.wait_for_termination() # no need for thread anymore
+    
+    logger.info("Registry started, listening on all interfaces at port: " + port)
+    logger.info("Press Ctrl+C to stop the server")
+    
+    while True:
+        try:
+            _ = input()
+        except KeyboardInterrupt:
+            logger.info("Stopping server")
+            server.stop(0)
+            exit(0)
+        except EOFError:
+            logger.warning("Server will now go headless (no input from stdin)")
+            server.wait_for_termination()
+            exit(0)
+        except:
+            logger.critical("Critical error, stopping server")
+            server.stop(None)
+            exit(1)
 
 
 if __name__ == "__main__":
     # get sys args
+    
+    agr = argparse.ArgumentParser()
+    agr.add_argument("--p",   metavar="PORT", type=int, help="port number")
+    agr.add_argument("--max", type=int, help="maximum number of servers")
+    agr.add_argument("--log", type=str, help="log file name")
 
-    if len(sys.argv) > 1:
-        try:
-            MAXSERVERS = int(sys.argv[1])
-        except ValueError:
-            print("Invalid number of servers")
-            print("Usage: python registry_server.py [number of servers]")
-            sys.exit(1)
-    logging.basicConfig()
+    args = agr.parse_args()
+
+    PORT = args.port
+    MAXSERVERS = args.max_servers
+    LOGFILE = args.log
+
+    logging.basicConfig(filename=LOGFILE, level=logging.INFO)
     serve()
