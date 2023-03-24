@@ -44,8 +44,6 @@ def get_served():
     known_servers = []
     with grpc.insecure_channel(REGISTRY_ADDR) as channel:
         stub = registry_server_pb2_grpc.MaintainStub(channel)
-
-        # get server list from registry server
         response = stub.GetServerList(registry_server_pb2.Empty())
         logger.info(f"Got server list from registry server {response.servers}")
         known_servers = response.servers
@@ -55,9 +53,6 @@ def get_served():
         logger.info(OPTIONS)
         try:
             choice = int(input("Enter your choice: "))
-            if choice == 1:
-                # write
-                pass
             if choice > 4 or choice < 1:
                 raise ValueError
         except ValueError:
