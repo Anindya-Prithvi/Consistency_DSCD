@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+message ClientRequest {
+    optional string name = 1;
+    optional string content = 2;
+    optional string uuid = 3;
+}
+
+message ReplicaResponse {
+    optional bool status = 1;
+    optional string uuid = 2;
+    optional string timestamp = 3;
+    optional string content = 4;
+}
+
+service Serve {
+    rpc Write(ClientRequest) returns (ReplicaResponse) {}
+    rpc Read(ClientRequest) returns (ReplicaResponse) {}
+    rpc Delete(ClientRequest) returns (ReplicaResponse) {}
+}
