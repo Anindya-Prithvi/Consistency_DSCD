@@ -40,11 +40,13 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
         if len(registered.servers) >= MAXSERVERS:
             return registry_server_pb2.Success(value=False)
         if any(
-            i.id == request.id or i.addr == request.addr for i in registered.servers
+            i.ip == request.ip or i.port == request.port for i in registered.servers
         ):
             return registry_server_pb2.Success(value=False)
 
-        registered.servers.add(id=request.id, addr=request.addr)
+        registered.servers.add(ip=request.ip, port=request.port)
+        
+        global primary_replica
         if primary_replica is None:
             primary_replica = (request.ip, request.port)
         else:

@@ -15,11 +15,11 @@ import registry_server_pb2
 import registry_server_pb2_grpc
 import os
 
-_server_id = uuid.uuid4()  # private
-logger = logging.getLogger(f"server-{str(_server_id)[:6]}")
+_server_id = str(uuid.uuid4())[:6]  # private
+logger = logging.getLogger(f"server-{_server_id}")
 logger.setLevel(logging.INFO)
 LOGFILE = None  # default
-REGISTRY_ADDR = "[::]:1337"
+REGISTRY_ADDR = "localhost:1337"
 EXPOSE_IP = "[::]"
 PORT = None
 PRIMARY_SERVER = None # no one is primary

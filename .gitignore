@@ -4,7 +4,7 @@ __pycache__/
 *$py.class
 
 # r/w junk
-replica_junk/
+replicas/
 
 # C extensions
 *.so
