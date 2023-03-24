@@ -22,7 +22,8 @@ import registry_server_pb2_grpc
 
 logger = logging.getLogger("registrar")
 logger.setLevel(logging.INFO)
-MAXSERVERS = 5  # default, changeable by command line arg
+MAXSERVERS = 500  # default, changeable by command line arg
+EXPOSE_IP = "[::]"
 PORT = 1337  # default
 LOGFILE = None  # default
 
@@ -39,11 +40,11 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
         if len(registered.servers) >= MAXSERVERS:
             return registry_server_pb2.Success(value=False)
         if any(
-            i.name == request.name or i.addr == request.addr for i in registered.servers
+            i.id == request.id or i.addr == request.addr for i in registered.servers
         ):
             return registry_server_pb2.Success(value=False)
 
-        registered.servers.add(name=request.name, addr=request.addr)
+        registered.servers.add(id=request.id, addr=request.addr)
         if primary_replica is None:
             primary_replica = (request.ip, request.port)
         else:
@@ -66,7 +67,7 @@ def serve():
     port = str(PORT)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     registry_server_pb2_grpc.add_MaintainServicer_to_server(Maintain(), server)
-    server.add_insecure_port("[::]:" + port)  # no TLS moment
+    server.add_insecure_port(EXPOSE_IP+":" + port)  # no TLS moment
     server.start()
 
     logger.info("Registry started, listening on all interfaces at port: " + port)
@@ -93,6 +94,7 @@ if __name__ == "__main__":
     # get sys args
 
     agr = argparse.ArgumentParser()
+    agr.add_argument("--ip", type=str, help="ip address (retrieve from ipconfig), default 0.0.0.0", default=EXPOSE_IP)
     agr.add_argument("--port", type=int, help="port number", default=PORT)
     agr.add_argument(
         "--max", type=int, help="maximum number of servers", default=MAXSERVERS
@@ -101,6 +103,7 @@ if __name__ == "__main__":
 
     args = agr.parse_args()
 
+    EXPOSE_IP = args.ip
     PORT = args.port
     MAXSERVERS = args.max
     LOGFILE = args.log
