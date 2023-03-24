@@ -11,6 +11,8 @@ import grpc
 import argparse
 import replica_pb2
 import replica_pb2_grpc
+import registry_server_pb2
+import registry_server_pb2_grpc
 
 _server_id = uuid.uuid4()  # private
 logger = logging.getLogger(f"server-{str(_server_id)[:6]}")
@@ -19,11 +21,16 @@ LOGFILE = None  # default
 REGISTRY_ADDR = "[::]:1337"
 EXPOSE_IP = "[::]"
 PORT = None
+PRIMARY_SERVER = None # no one is primary
+REPLICAS = registry_server_pb2.Server_book()
 
 class Serve(replica_pb2_grpc.ServeServicer):
     # TODO: All 3
     def Write(self, request, context):
-        return super().Write(request, context)
+        logger.info("WRITE REQUEST FROM %s", context.peer())
+        # send to primary replica
+
+        return registry_server_pb2.Success(value=True)
     def Read(self, request, context):
         return super().Read(request, context)
     def Delete(self, request, context):
@@ -62,6 +69,24 @@ class Serve(replica_pb2_grpc.ServeServicer):
 def serve():
     # TODO: server cleints
     port = str(PORT)
+
+    # connect to registry
+    with grpc.insecure_channel(REGISTRY_ADDR) as channel:
+        stub = registry_server_pb2_grpc.MaintainStub(channel)
+        response = stub.RegisterServer(
+            registry_server_pb2.Server_information(
+                ip=EXPOSE_IP, port=port
+            )
+        )
+        if response.value:
+            logger.info("Successfully registered with registry")
+            PRIMARY_SERVER = registry_server_pb2.Server_information(ip = response.ip, port = response.port)
+            if response.ip == EXPOSE_IP and response.port == port:
+                logger.info("I am the primary replica")
+        else:
+            logger.critical("Failed to register with registry")
+            exit(1)
+
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     replica_pb2_grpc.add_ServeServicer_to_server(Serve(), server)
     server.add_insecure_port(EXPOSE_IP+":" + port)  # no TLS moment
@@ -104,6 +129,8 @@ if __name__ == "__main__":
     args = agr.parse_args()
     LOGFILE = args.log
     REGISTRY = args.addr
+    PORT = args.port
+    EXPOSE_IP = args.ip
 
     logging.basicConfig(filename=LOGFILE, level=logging.INFO)
     serve()
