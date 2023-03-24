@@ -12,10 +12,12 @@ import registry_server_pb2
 import registry_server_pb2_grpc
 
 _server_id = uuid.uuid4()  # private
-logger = logging.getLogger(f"client-{str(_server_id)[:6]}")
+logger = logging.getLogger(f"server-{str(_server_id)[:6]}")
 logger.setLevel(logging.INFO)
 LOGFILE = None  # default
-REGISTRY_ADDR = "localhost:1337"
+REGISTRY_ADDR = "[::]:1337"
+EXPOSE_IP = "[::]"
+PORT = None
 OPTIONS = """\
 Please choose from the following options:
     1. WRITE
@@ -34,6 +36,8 @@ if __name__ == "__main__":
     # get sys args
 
     agr = argparse.ArgumentParser()
+    agr.add_argument("--ip", type=str, help="ip address of server (default 0.0.0.0)", default="0.0.0.0")
+    agr.add_argument("--port", type=int, help="port number", required=True)
     agr.add_argument("--log", type=str, help="log file name", default=None)
     agr.add_argument(
         "--addr",
