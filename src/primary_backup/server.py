@@ -13,6 +13,7 @@ import replica_pb2
 import replica_pb2_grpc
 import registry_server_pb2
 import registry_server_pb2_grpc
+import os
 
 _server_id = uuid.uuid4()  # private
 logger = logging.getLogger(f"server-{str(_server_id)[:6]}")
@@ -22,17 +23,43 @@ REGISTRY_ADDR = "[::]:1337"
 EXPOSE_IP = "[::]"
 PORT = None
 PRIMARY_SERVER = None # no one is primary
+IS_PRIMARY = False
 REPLICAS = registry_server_pb2.Server_book()
+
+# make directory for replicas files
+if not os.path.exists("replicas"):
+    os.mkdir("replicas")
+
+# then make directory for itself
+if not os.path.exists("replicas/" + str(_server_id)):
+    os.mkdir("replicas/" + str(_server_id))
 
 class Serve(replica_pb2_grpc.ServeServicer):
     # TODO: All 3
     def Write(self, request, context):
         logger.info("WRITE REQUEST FROM %s", context.peer())
         # send to primary replica
+        if IS_PRIMARY:
+            # write to file
+            with open(request.filename, "w") as f:
+                f.write(request.data)
+            return registry_server_pb2.Success(value=True)
+        else:
+            with grpc.insecure_channel(PRIMARY_SERVER.ip + ":" + PRIMARY_SERVER.port) as channel:
+                stub = replica_pb2_grpc.ServeStub(channel)
+                response = stub.Write(request)
+                return response
 
-        return registry_server_pb2.Success(value=True)
     def Read(self, request, context):
-        return super().Read(request, context)
+        logger.info("READ REQUEST FROM %s", context.peer())
+        # if file in fs
+        try:
+            with open(request.filename, "r") as f:
+                data = f.read()
+            return replica_pb2.File(data=data)
+        except FileNotFoundError:
+            return replica_pb2.File(data="")
+        
     def Delete(self, request, context):
         return super().Delete(request, context)
     # below for reference
@@ -81,8 +108,10 @@ def serve():
         if response.value:
             logger.info("Successfully registered with registry")
             PRIMARY_SERVER = registry_server_pb2.Server_information(ip = response.ip, port = response.port)
+
             if response.ip == EXPOSE_IP and response.port == port:
-                logger.info("I am the primary replica")
+                IS_PRIMARY = True
+                logger.info("This is the primary replica")
         else:
             logger.critical("Failed to register with registry")
             exit(1)
