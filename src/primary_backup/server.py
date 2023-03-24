@@ -4,12 +4,13 @@
 # Each file can be assumed to be very small in size ( 200-500 characters)
 
 
+from concurrent import futures
 import uuid
 import logging
 import grpc
 import argparse
-import registry_server_pb2
-import registry_server_pb2_grpc
+import replica_pb2
+import replica_pb2_grpc
 
 _server_id = uuid.uuid4()  # private
 logger = logging.getLogger(f"server-{str(_server_id)[:6]}")
@@ -18,18 +19,72 @@ LOGFILE = None  # default
 REGISTRY_ADDR = "[::]:1337"
 EXPOSE_IP = "[::]"
 PORT = None
-OPTIONS = """\
-Please choose from the following options:
-    1. WRITE
-    2. READ
-    3. DELETE
-    4. EXIT\
-"""
+
+class Serve(replica_pb2_grpc.ServeServicer):
+    # TODO: All 3
+    def Write(self, request, context):
+        return super().Write(request, context)
+    def Read(self, request, context):
+        return super().Read(request, context)
+    def Delete(self, request, context):
+        return super().Delete(request, context)
+    # below for reference
+    # def RegisterServer(self, request, context):
+    #     logger.info(
+    #         "JOIN REQUEST FROM %s",
+    #         context.peer(),
+    #     )
+    #     if len(registered.servers) >= MAXSERVERS:
+    #         return registry_server_pb2.Success(value=False)
+    #     if any(
+    #         i.id == request.id or i.addr == request.addr for i in registered.servers
+    #     ):
+    #         return registry_server_pb2.Success(value=False)
+
+    #     registered.servers.add(id=request.id, addr=request.addr)
+    #     if primary_replica is None:
+    #         primary_replica = (request.ip, request.port)
+    #     else:
+    #         pass
+
+    #     return registry_server_pb2.Server_information(
+    #         ip=primary_replica[0], port=primary_replica[1]
+    #     )
+
+    # def GetServerList(self, request, context):
+    #     logger.info(
+    #         "SERVER LIST REQUEST FROM %s",
+    #         context.peer(),
+    #     )
+    #     return registered
 
 
 def serve():
     # TODO: server cleints
-    pass
+    port = str(PORT)
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    replica_pb2_grpc.add_ServeServicer_to_server(Serve(), server)
+    server.add_insecure_port(EXPOSE_IP+":" + port)  # no TLS moment
+    server.start()
+
+    logger.info("Registry started, listening on all interfaces at port: " + port)
+    logger.info("Press Ctrl+C to stop the server")
+
+    while True:
+        try:
+            _ = input()
+        except KeyboardInterrupt:
+            logger.info("Stopping server")
+            server.stop(0)
+            exit(0)
+        except EOFError:
+            logger.warning("Server will now go headless (no input from stdin)")
+            server.wait_for_termination()
+            exit(0)
+        except:
+            logger.critical("Critical error, stopping server")
+            server.stop(None)
+            exit(1)
 
 
 if __name__ == "__main__":
