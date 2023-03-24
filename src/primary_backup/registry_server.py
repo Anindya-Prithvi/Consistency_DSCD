@@ -7,9 +7,9 @@
 # [done]    b. Registry server marks the first replica as the primary replica.
 # [done]    c. In response to each replica, the registry server always sends the information (ip +
 #              port) about the primary server.
-#           d. The registry server also needs to tell the primary replica about the joining of a
+# [done]    d. The registry server also needs to tell the primary replica about the joining of a
 #               new replica (send the ip + port of the new replica to the primary replica).
-# 4. A client should get the list of replicas (list of ip address + port) from the registry server on
+# [done] 4. A client should get the list of replicas (list of ip address + port) from the registry server on
 # startup.
 
 # Majority of code adopted from our implementation of assignment 1 (obviosly)
@@ -19,6 +19,7 @@ import grpc
 import argparse
 import registry_server_pb2
 import registry_server_pb2_grpc
+import replica_primary_pb2
 
 logger = logging.getLogger("registrar")
 logger.setLevel(logging.INFO)
@@ -27,6 +28,7 @@ PORT = 1337     # default
 LOGFILE = None  # default
 
 registered = registry_server_pb2.Server_book()
+replica_primary = replica_primary_pb2.Server_book()
 primary_replica = None
 
 
@@ -48,7 +50,7 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
             primary_replica = (request.ip, request.port)
         else:
             #TODO: inform primary replica
-            pass
+            replica_primary.add(ip = request.ip, port = request.port)
 
         return registry_server_pb2.Server_information(ip = primary_replica[0], port = primary_replica[1])
 
