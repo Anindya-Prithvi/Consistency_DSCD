@@ -15,8 +15,6 @@ import registry_server_pb2
 import registry_server_pb2_grpc
 import os
 
-global _server_id, logger, LOGFILE, REGISTRY_ADDR, EXPOSE_IP, PORT, PRIMARY_SERVER, IS_PRIMARY, REPLICAS
-
 _server_id = str(uuid.uuid4())[:6]  # private
 logger = logging.getLogger(f"server-{_server_id}")
 logger.setLevel(logging.INFO)
@@ -79,7 +77,7 @@ class Serve(replica_pb2_grpc.ServeServicer):
     def Delete(self, request, context):
         return super().Delete(request, context)
 
-    
+
 def serve():
     # TODO: server cleints
     port = str(PORT)
