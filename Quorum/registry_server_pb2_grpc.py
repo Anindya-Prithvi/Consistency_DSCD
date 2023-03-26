@@ -25,6 +25,16 @@ class MaintainStub(object):
                 request_serializer=registry__server__pb2.Empty.SerializeToString,
                 response_deserializer=registry__server__pb2.Server_book.FromString,
                 )
+        self.GetReadReplicas = channel.unary_unary(
+                '/Maintain/GetReadReplicas',
+                request_serializer=registry__server__pb2.Empty.SerializeToString,
+                response_deserializer=registry__server__pb2.Server_book.FromString,
+                )
+        self.GetWriteReplicas = channel.unary_unary(
+                '/Maintain/GetWriteReplicas',
+                request_serializer=registry__server__pb2.Empty.SerializeToString,
+                response_deserializer=registry__server__pb2.Server_book.FromString,
+                )
 
 
 class MaintainServicer(object):
@@ -45,6 +55,20 @@ class MaintainServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetReadReplicas(self, request, context):
+        """/ get the list of read replicas
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetWriteReplicas(self, request, context):
+        """/ get the list of write replicas
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_MaintainServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -55,6 +79,16 @@ def add_MaintainServicer_to_server(servicer, server):
             ),
             'GetServerList': grpc.unary_unary_rpc_method_handler(
                     servicer.GetServerList,
+                    request_deserializer=registry__server__pb2.Empty.FromString,
+                    response_serializer=registry__server__pb2.Server_book.SerializeToString,
+            ),
+            'GetReadReplicas': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetReadReplicas,
+                    request_deserializer=registry__server__pb2.Empty.FromString,
+                    response_serializer=registry__server__pb2.Server_book.SerializeToString,
+            ),
+            'GetWriteReplicas': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetWriteReplicas,
                     request_deserializer=registry__server__pb2.Empty.FromString,
                     response_serializer=registry__server__pb2.Server_book.SerializeToString,
             ),
@@ -98,6 +132,40 @@ class Maintain(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/Maintain/GetServerList',
+            registry__server__pb2.Empty.SerializeToString,
+            registry__server__pb2.Server_book.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetReadReplicas(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/Maintain/GetReadReplicas',
+            registry__server__pb2.Empty.SerializeToString,
+            registry__server__pb2.Server_book.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetWriteReplicas(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/Maintain/GetWriteReplicas',
             registry__server__pb2.Empty.SerializeToString,
             registry__server__pb2.Server_book.FromString,
             options, channel_credentials,

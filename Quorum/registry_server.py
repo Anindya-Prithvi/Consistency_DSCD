@@ -19,6 +19,7 @@ import grpc
 import argparse
 import registry_server_pb2
 import registry_server_pb2_grpc
+import random
 
 logger = logging.getLogger("registrar")
 logger.setLevel(logging.INFO)
@@ -26,9 +27,11 @@ MAXSERVERS = 500  # default, changeable by command line arg
 EXPOSE_IP = "[::]"
 PORT = 1337  # default
 LOGFILE = None  # default
+global N_r
+global N_w
+global N
 
 registered = registry_server_pb2.Server_book()
-primary_replica = None
 
 
 class Maintain(registry_server_pb2_grpc.MaintainServicer):
@@ -46,15 +49,8 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
 
         registered.servers.add(ip=request.ip, port=request.port)
         
-        global primary_replica
-        if primary_replica is None:
-            primary_replica = (request.ip, request.port)
-        else:
-            # TODO: inform primary replica
-            pass
-
         return registry_server_pb2.Server_information(
-            ip=primary_replica[0], port=primary_replica[1]
+            ip=request.ip, port=request.port
         )
 
     def GetServerList(self, request, context):
@@ -63,7 +59,20 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
             context.peer(),
         )
         return registered
+    
+    def GetReadReplicas(self, request, context):
+        logger.info(
+            "READ REPLICA LIST REQUEST FROM %s",
+            context.peer(),
+        )
+        return registry_server_pb2.Server_book(servers=random.sample(registered.servers, N_r))
 
+    def GetWriteReplicas(self, request, context):
+        logger.info(
+            "WRITE REPLICA LIST REQUEST FROM %s",
+            context.peer(),
+        )
+        return registry_server_pb2.Server_book(servers=random.sample(registered.servers, N_w))
 
 def serve():
     port = str(PORT)
@@ -83,7 +92,7 @@ def serve():
             if N_r + N_w <= N or N_w <= N / 2:
                 raise ValueError
             else:
-                pass
+                logger.info("Registry server is ready to accept requests")
         except ValueError:
             logger.warning("Invalid quorum size, please try again")
         except KeyboardInterrupt:
