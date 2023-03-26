@@ -1,4 +1,5 @@
 syntax = "proto3";
+import "registry_server.proto";
 
 message ClientRequest {
     optional string name = 1;
@@ -11,6 +12,10 @@ message ReplicaResponse {
     optional string uuid = 2;
     optional string timestamp = 3;
     optional string content = 4;
+}
+
+service Primera {
+    rpc RecvReplica(Server_information) returns (Success);
 }
 
 service Serve {

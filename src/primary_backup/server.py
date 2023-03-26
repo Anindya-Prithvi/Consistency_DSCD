@@ -19,8 +19,8 @@ _server_id = str(uuid.uuid4())[:6]  # private
 logger = logging.getLogger(f"server-{_server_id}")
 logger.setLevel(logging.INFO)
 LOGFILE = None  # default
-REGISTRY_ADDR = "localhost:1337"
-EXPOSE_IP = "[::]"
+REGISTRY_ADDR = "[::1]:1337"
+EXPOSE_IP = "[::1]"
 PORT = None
 PRIMARY_SERVER = None # no one is primary
 IS_PRIMARY = False
@@ -33,6 +33,17 @@ if not os.path.exists("replicas"):
 # then make directory for itself
 if not os.path.exists("replicas/" + str(_server_id)):
     os.mkdir("replicas/" + str(_server_id))
+
+class Primera(replica_pb2_grpc.PrimeraServicer):
+    def RecvReplica(self, request, context):
+        logger.info("RECEIVED NEW REGISTERED SERVER")
+        # check if already in REPLICAS.servers
+        if any(i.ip == request.ip and i.port == request.port for i in REPLICAS.servers):
+            return registry_server_pb2.Success(value=False)
+        else:
+            REPLICAS.servers.add(ip=request.ip, port=request.port)
+            return registry_server_pb2.Success(value=True)
+
 
 class Serve(replica_pb2_grpc.ServeServicer):
     # TODO: All 3
@@ -105,19 +116,24 @@ def serve():
                 ip=EXPOSE_IP, port=port
             )
         )
-        if response.value:
+        if response:
             logger.info("Successfully registered with registry")
             PRIMARY_SERVER = registry_server_pb2.Server_information(ip = response.ip, port = response.port)
 
             if response.ip == EXPOSE_IP and response.port == port:
+                global IS_PRIMARY
                 IS_PRIMARY = True
                 logger.info("This is the primary replica")
+                # Launch primary replica receive service
         else:
-            logger.critical("Failed to register with registry")
+            logger.critical("Failed to register with registry. No response")
             exit(1)
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     replica_pb2_grpc.add_ServeServicer_to_server(Serve(), server)
+    
+    if IS_PRIMARY:
+        replica_pb2_grpc.add_PrimeraServicer_to_server(Primera(), server)
     server.add_insecure_port(EXPOSE_IP+":" + port)  # no TLS moment
     server.start()
 
@@ -145,7 +161,7 @@ if __name__ == "__main__":
     # get sys args
 
     agr = argparse.ArgumentParser()
-    agr.add_argument("--ip", type=str, help="ip address of server (default 0.0.0.0)", default="0.0.0.0")
+    agr.add_argument("--ip", type=str, help="ip address of server (default ::1)", default="[::1]")
     agr.add_argument("--port", type=int, help="port number", required=True)
     agr.add_argument("--log", type=str, help="log file name", default=None)
     agr.add_argument(

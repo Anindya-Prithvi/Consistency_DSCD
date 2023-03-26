@@ -107,7 +107,7 @@ if __name__ == "__main__":
     # get sys args
 
     agr = argparse.ArgumentParser()
-    agr.add_argument("--ip", type=str, help="ip address (retrieve from ipconfig), default 0.0.0.0", default=EXPOSE_IP)
+    agr.add_argument("--ip", type=str, help="ip address (retrieve from ipconfig), default [::] (all)", default=EXPOSE_IP)
     agr.add_argument("--port", type=int, help="port number", default=PORT)
     agr.add_argument(
         "--max", type=int, help="maximum number of servers", default=MAXSERVERS

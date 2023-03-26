@@ -20,7 +20,7 @@ logger = logging.getLogger(f"server-{_server_id}")
 logger.setLevel(logging.INFO)
 LOGFILE = None  # default
 REGISTRY_ADDR = "localhost:1337"
-EXPOSE_IP = "[::]"
+EXPOSE_IP = "[::1]"
 PORT = None
 PRIMARY_SERVER = None # no one is primary
 IS_PRIMARY = False
@@ -141,7 +141,7 @@ if __name__ == "__main__":
     # get sys args
 
     agr = argparse.ArgumentParser()
-    agr.add_argument("--ip", type=str, help="ip address of server (default 0.0.0.0)", default="0.0.0.0")
+    agr.add_argument("--ip", type=str, help="ip address of server (default localhost)", default="[::1]")
     agr.add_argument("--port", type=int, help="port number", required=True)
     agr.add_argument("--log", type=str, help="log file name", default=None)
     agr.add_argument(

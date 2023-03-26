@@ -19,6 +19,8 @@ import grpc
 import argparse
 import registry_server_pb2
 import registry_server_pb2_grpc
+import replica_pb2
+import replica_pb2_grpc
 
 logger = logging.getLogger("registrar")
 logger.setLevel(logging.INFO)
@@ -37,24 +39,20 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
             "JOIN REQUEST FROM %s",
             context.peer(),
         )
-        if len(registered.servers) >= MAXSERVERS:
-            return registry_server_pb2.Success(value=False)
-        if any(
-            i.ip == request.ip or i.port == request.port for i in registered.servers
-        ):
-            return registry_server_pb2.Success(value=False)
 
         registered.servers.add(ip=request.ip, port=request.port)
         
         global primary_replica
         if primary_replica is None:
-            primary_replica = (request.ip, request.port)
+            primary_replica = registry_server_pb2.Server_information(ip = request.ip, port = request.port)
         else:
-            # TODO: inform primary replica
-            pass
+            with grpc.insecure_channel(primary_replica.ip + ":" + primary_replica.port) as channel:
+                stub = replica_pb2_grpc.PrimeraStub(channel)
+                response = stub.RecvReplica(request)
+                logger.info(f"Primary replica informed of new replica: {response.value}")
 
         return registry_server_pb2.Server_information(
-            ip=primary_replica[0], port=primary_replica[1]
+            ip=primary_replica.ip, port=primary_replica.port
         )
 
     def GetServerList(self, request, context):
@@ -96,7 +94,7 @@ if __name__ == "__main__":
     # get sys args
 
     agr = argparse.ArgumentParser()
-    agr.add_argument("--ip", type=str, help="ip address (retrieve from ipconfig), default 0.0.0.0", default=EXPOSE_IP)
+    agr.add_argument("--ip", type=str, help="ip address to listen at, default [::] (all)", default=EXPOSE_IP)
     agr.add_argument("--port", type=int, help="port number", default=PORT)
     agr.add_argument(
         "--max", type=int, help="maximum number of servers", default=MAXSERVERS
