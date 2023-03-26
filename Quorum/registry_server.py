@@ -40,12 +40,6 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
             "JOIN REQUEST FROM %s",
             context.peer(),
         )
-        if len(registered.servers) >= MAXSERVERS:
-            return registry_server_pb2.Success(value=False)
-        if any(
-            i.ip == request.ip or i.port == request.port for i in registered.servers
-        ):
-            return registry_server_pb2.Success(value=False)
 
         registered.servers.add(ip=request.ip, port=request.port)
         
