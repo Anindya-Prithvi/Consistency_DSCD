@@ -22,7 +22,7 @@ LOGFILE = None  # default
 REGISTRY_ADDR = "[::1]:1337"
 EXPOSE_IP = "[::1]"
 PORT = None
-PRIMARY_SERVER = None # no one is primary
+PRIMARY_SERVER = None  # no one is primary
 IS_PRIMARY = False
 REPLICAS = registry_server_pb2.Server_book()
 
@@ -33,6 +33,7 @@ if not os.path.exists("replicas"):
 # then make directory for itself
 if not os.path.exists("replicas/" + str(_server_id)):
     os.mkdir("replicas/" + str(_server_id))
+
 
 class Primera(replica_pb2_grpc.PrimeraServicer):
     def RecvReplica(self, request, context):
@@ -56,7 +57,9 @@ class Serve(replica_pb2_grpc.ServeServicer):
                 f.write(request.data)
             return registry_server_pb2.Success(value=True)
         else:
-            with grpc.insecure_channel(PRIMARY_SERVER.ip + ":" + PRIMARY_SERVER.port) as channel:
+            with grpc.insecure_channel(
+                PRIMARY_SERVER.ip + ":" + PRIMARY_SERVER.port
+            ) as channel:
                 stub = replica_pb2_grpc.ServeStub(channel)
                 response = stub.Write(request)
                 return response
@@ -70,9 +73,10 @@ class Serve(replica_pb2_grpc.ServeServicer):
             return replica_pb2.File(data=data)
         except FileNotFoundError:
             return replica_pb2.File(data="")
-        
+
     def Delete(self, request, context):
         return super().Delete(request, context)
+
     # below for reference
     # def RegisterServer(self, request, context):
     #     logger.info(
@@ -112,13 +116,13 @@ def serve():
     with grpc.insecure_channel(REGISTRY_ADDR) as channel:
         stub = registry_server_pb2_grpc.MaintainStub(channel)
         response = stub.RegisterServer(
-            registry_server_pb2.Server_information(
-                ip=EXPOSE_IP, port=port
-            )
+            registry_server_pb2.Server_information(ip=EXPOSE_IP, port=port)
         )
         if response:
             logger.info("Successfully registered with registry")
-            PRIMARY_SERVER = registry_server_pb2.Server_information(ip = response.ip, port = response.port)
+            PRIMARY_SERVER = registry_server_pb2.Server_information(
+                ip=response.ip, port=response.port
+            )
 
             if response.ip == EXPOSE_IP and response.port == port:
                 global IS_PRIMARY
@@ -131,10 +135,10 @@ def serve():
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     replica_pb2_grpc.add_ServeServicer_to_server(Serve(), server)
-    
+
     if IS_PRIMARY:
         replica_pb2_grpc.add_PrimeraServicer_to_server(Primera(), server)
-    server.add_insecure_port(EXPOSE_IP+":" + port)  # no TLS moment
+    server.add_insecure_port(EXPOSE_IP + ":" + port)  # no TLS moment
     server.start()
 
     logger.info("Registry started, listening on all interfaces at port: " + port)
@@ -161,7 +165,9 @@ if __name__ == "__main__":
     # get sys args
 
     agr = argparse.ArgumentParser()
-    agr.add_argument("--ip", type=str, help="ip address of server (default ::1)", default="[::1]")
+    agr.add_argument(
+        "--ip", type=str, help="ip address of server (default ::1)", default="[::1]"
+    )
     agr.add_argument("--port", type=int, help="port number", required=True)
     agr.add_argument("--log", type=str, help="log file name", default=None)
     agr.add_argument(

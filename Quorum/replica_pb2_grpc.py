@@ -15,20 +15,20 @@ class ServeStub(object):
             channel: A grpc.Channel.
         """
         self.Write = channel.unary_unary(
-                '/Serve/Write',
-                request_serializer=replica__pb2.ClientRequest.SerializeToString,
-                response_deserializer=replica__pb2.ReplicaResponse.FromString,
-                )
+            "/Serve/Write",
+            request_serializer=replica__pb2.ClientRequest.SerializeToString,
+            response_deserializer=replica__pb2.ReplicaResponse.FromString,
+        )
         self.Read = channel.unary_unary(
-                '/Serve/Read',
-                request_serializer=replica__pb2.ClientRequest.SerializeToString,
-                response_deserializer=replica__pb2.ReplicaResponse.FromString,
-                )
+            "/Serve/Read",
+            request_serializer=replica__pb2.ClientRequest.SerializeToString,
+            response_deserializer=replica__pb2.ReplicaResponse.FromString,
+        )
         self.Delete = channel.unary_unary(
-                '/Serve/Delete',
-                request_serializer=replica__pb2.ClientRequest.SerializeToString,
-                response_deserializer=replica__pb2.ReplicaResponse.FromString,
-                )
+            "/Serve/Delete",
+            request_serializer=replica__pb2.ClientRequest.SerializeToString,
+            response_deserializer=replica__pb2.ReplicaResponse.FromString,
+        )
 
 
 class ServeServicer(object):
@@ -37,96 +37,131 @@ class ServeServicer(object):
     def Write(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
 
     def Read(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
 
     def Delete(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
 
 
 def add_ServeServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'Write': grpc.unary_unary_rpc_method_handler(
-                    servicer.Write,
-                    request_deserializer=replica__pb2.ClientRequest.FromString,
-                    response_serializer=replica__pb2.ReplicaResponse.SerializeToString,
-            ),
-            'Read': grpc.unary_unary_rpc_method_handler(
-                    servicer.Read,
-                    request_deserializer=replica__pb2.ClientRequest.FromString,
-                    response_serializer=replica__pb2.ReplicaResponse.SerializeToString,
-            ),
-            'Delete': grpc.unary_unary_rpc_method_handler(
-                    servicer.Delete,
-                    request_deserializer=replica__pb2.ClientRequest.FromString,
-                    response_serializer=replica__pb2.ReplicaResponse.SerializeToString,
-            ),
+        "Write": grpc.unary_unary_rpc_method_handler(
+            servicer.Write,
+            request_deserializer=replica__pb2.ClientRequest.FromString,
+            response_serializer=replica__pb2.ReplicaResponse.SerializeToString,
+        ),
+        "Read": grpc.unary_unary_rpc_method_handler(
+            servicer.Read,
+            request_deserializer=replica__pb2.ClientRequest.FromString,
+            response_serializer=replica__pb2.ReplicaResponse.SerializeToString,
+        ),
+        "Delete": grpc.unary_unary_rpc_method_handler(
+            servicer.Delete,
+            request_deserializer=replica__pb2.ClientRequest.FromString,
+            response_serializer=replica__pb2.ReplicaResponse.SerializeToString,
+        ),
     }
-    generic_handler = grpc.method_handlers_generic_handler(
-            'Serve', rpc_method_handlers)
+    generic_handler = grpc.method_handlers_generic_handler("Serve", rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
- # This class is part of an EXPERIMENTAL API.
+# This class is part of an EXPERIMENTAL API.
 class Serve(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def Write(request,
+    def Write(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
+        return grpc.experimental.unary_unary(
+            request,
             target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/Serve/Write',
+            "/Serve/Write",
             replica__pb2.ClientRequest.SerializeToString,
             replica__pb2.ReplicaResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+        )
 
     @staticmethod
-    def Read(request,
+    def Read(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
+        return grpc.experimental.unary_unary(
+            request,
             target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/Serve/Read',
+            "/Serve/Read",
             replica__pb2.ClientRequest.SerializeToString,
             replica__pb2.ReplicaResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+        )
 
     @staticmethod
-    def Delete(request,
+    def Delete(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
+        return grpc.experimental.unary_unary(
+            request,
             target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/Serve/Delete',
+            "/Serve/Delete",
             replica__pb2.ClientRequest.SerializeToString,
             replica__pb2.ReplicaResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+        )

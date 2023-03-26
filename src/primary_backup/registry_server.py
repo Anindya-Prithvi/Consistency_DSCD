@@ -41,15 +41,21 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
         )
 
         registered.servers.add(ip=request.ip, port=request.port)
-        
+
         global primary_replica
         if primary_replica is None:
-            primary_replica = registry_server_pb2.Server_information(ip = request.ip, port = request.port)
+            primary_replica = registry_server_pb2.Server_information(
+                ip=request.ip, port=request.port
+            )
         else:
-            with grpc.insecure_channel(primary_replica.ip + ":" + primary_replica.port) as channel:
+            with grpc.insecure_channel(
+                primary_replica.ip + ":" + primary_replica.port
+            ) as channel:
                 stub = replica_pb2_grpc.PrimeraStub(channel)
                 response = stub.RecvReplica(request)
-                logger.info(f"Primary replica informed of new replica: {response.value}")
+                logger.info(
+                    f"Primary replica informed of new replica: {response.value}"
+                )
 
         return registry_server_pb2.Server_information(
             ip=primary_replica.ip, port=primary_replica.port
@@ -67,7 +73,7 @@ def serve():
     port = str(PORT)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     registry_server_pb2_grpc.add_MaintainServicer_to_server(Maintain(), server)
-    server.add_insecure_port(EXPOSE_IP+":" + port)  # no TLS moment
+    server.add_insecure_port(EXPOSE_IP + ":" + port)  # no TLS moment
     server.start()
 
     logger.info("Registry started, listening on all interfaces at port: " + port)
@@ -94,7 +100,12 @@ if __name__ == "__main__":
     # get sys args
 
     agr = argparse.ArgumentParser()
-    agr.add_argument("--ip", type=str, help="ip address to listen at, default [::] (all)", default=EXPOSE_IP)
+    agr.add_argument(
+        "--ip",
+        type=str,
+        help="ip address to listen at, default [::] (all)",
+        default=EXPOSE_IP,
+    )
     agr.add_argument("--port", type=int, help="port number", default=PORT)
     agr.add_argument(
         "--max", type=int, help="maximum number of servers", default=MAXSERVERS

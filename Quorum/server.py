@@ -22,7 +22,7 @@ LOGFILE = None  # default
 REGISTRY_ADDR = "localhost:1337"
 EXPOSE_IP = "[::1]"
 PORT = None
-PRIMARY_SERVER = None # no one is primary
+PRIMARY_SERVER = None  # no one is primary
 IS_PRIMARY = False
 REPLICAS = registry_server_pb2.Server_book()
 
@@ -34,11 +34,11 @@ if not os.path.exists("replicas"):
 if not os.path.exists("replicas/" + str(_server_id)):
     os.mkdir("replicas/" + str(_server_id))
 
+
 class Serve(replica_pb2_grpc.ServeServicer):
     # TODO: All 3
     def Write(self, request, context):
         logger.info("WRITE REQUEST FROM %s", context.peer())
-        
 
         # if IS_PRIMARY:
         #     # write to file
@@ -60,9 +60,10 @@ class Serve(replica_pb2_grpc.ServeServicer):
             return replica_pb2.File(data=data)
         except FileNotFoundError:
             return replica_pb2.File(data="")
-        
+
     def Delete(self, request, context):
         return super().Delete(request, context)
+
     # below for reference
     # def RegisterServer(self, request, context):
     #     logger.info(
@@ -102,9 +103,7 @@ def serve():
     with grpc.insecure_channel(REGISTRY_ADDR) as channel:
         stub = registry_server_pb2_grpc.MaintainStub(channel)
         response = stub.RegisterServer(
-            registry_server_pb2.Server_information(
-                ip=EXPOSE_IP, port=port
-            )
+            registry_server_pb2.Server_information(ip=EXPOSE_IP, port=port)
         )
         if response.value:
             logger.info("Successfully registered with registry")
@@ -114,7 +113,7 @@ def serve():
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     replica_pb2_grpc.add_ServeServicer_to_server(Serve(), server)
-    server.add_insecure_port(EXPOSE_IP+":" + port)  # no TLS moment
+    server.add_insecure_port(EXPOSE_IP + ":" + port)  # no TLS moment
     server.start()
 
     logger.info("Registry started, listening on all interfaces at port: " + port)
@@ -141,7 +140,12 @@ if __name__ == "__main__":
     # get sys args
 
     agr = argparse.ArgumentParser()
-    agr.add_argument("--ip", type=str, help="ip address of server (default localhost)", default="[::1]")
+    agr.add_argument(
+        "--ip",
+        type=str,
+        help="ip address of server (default localhost)",
+        default="[::1]",
+    )
     agr.add_argument("--port", type=int, help="port number", required=True)
     agr.add_argument("--log", type=str, help="log file name", default=None)
     agr.add_argument(

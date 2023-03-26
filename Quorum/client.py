@@ -41,6 +41,7 @@ Please choose from the following options:
     4. EXIT\
 """
 
+
 def write_server_helper(server, client_info):
     with grpc.insecure_channel(server.ip + ":" + server.port) as channel:
         stub = replica_pb2_grpc.Serve(channel)
@@ -60,10 +61,10 @@ def delete_server_helper(server, client_info):
         stub = replica_pb2_grpc.Serve(channel)
         response = stub.Delete(client_info)
         return response
-    
+
 
 def write_file(logger):
-    #getting list of write quorum servers
+    # getting list of write quorum servers
     known_servers = []
     with grpc.insecure_channel(REGISTRY_ADDR) as channel:
         stub = registry_server_pb2_grpc.MaintainStub(channel)
@@ -71,19 +72,19 @@ def write_file(logger):
         logger.info(f"List of write replicas {response.servers}")
         known_servers = response.servers
 
-    #getting user input
+    # getting user input
     client_info = replica_pb2.ClientRequest()
     file_uuid = input("Enter the UUID of the file (leave blank if creating new file): ")
     if file_uuid == "":
         file_uuid = str(uuid.uuid4())
     client_info.uuid = file_uuid
-    
-    #getting file name and content
-    while (True):
+
+    # getting file name and content
+    while True:
         try:
             file_name = input("Enter the name of the file: ")
             file_content = input("Enter the content of the file: ")
-            if (file_name == "" or file_content == ""):
+            if file_name == "" or file_content == "":
                 raise ValueError
             else:
                 client_info.name = file_name
@@ -95,20 +96,26 @@ def write_file(logger):
         except KeyboardInterrupt:
             logger.error("Keyboard interrupt")
             return
-        
-    #sending request to write quorum servers
+
+    # sending request to write quorum servers
     results = []
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        results = [executor.submit(write_server_helper, server, client_info) for server in known_servers]
+        results = [
+            executor.submit(write_server_helper, server, client_info)
+            for server in known_servers
+        ]
 
-    #getting response from write quorum servers
+    # getting response from write quorum servers
     for future in concurrent.futures.as_completed(results):
         response = future.result()
         if response.status == replica_pb2.Status.SUCCESS:
-            logger.info(f"File written successfully with UUID {response.uuid} and version {response.timestamp}")
+            logger.info(
+                f"File written successfully with UUID {response.uuid} and version {response.timestamp}"
+            )
         else:
-            logger.error(f"File not written successfully with UUID {response.uuid} and version {response.timestamp}")
-
+            logger.error(
+                f"File not written successfully with UUID {response.uuid} and version {response.timestamp}"
+            )
 
 
 def read_file(logger):
@@ -119,13 +126,15 @@ def read_file(logger):
         logger.info(f"List of read replicas {response.servers}")
         known_servers = response.servers
 
-    #getting user input
-    #TODO: check if file uuid exists or not
-    while (True):
+    # getting user input
+    # TODO: check if file uuid exists or not
+    while True:
         try:
             client_info = replica_pb2.ClientRequest()
-            file_uuid = input("Enter the UUID of the file (leave blank if creating new file): ")
-            if (file_uuid == ""):
+            file_uuid = input(
+                "Enter the UUID of the file (leave blank if creating new file): "
+            )
+            if file_uuid == "":
                 raise ValueError
             else:
                 client_info.uuid = file_uuid
@@ -137,19 +146,27 @@ def read_file(logger):
             logger.error("Keyboard interrupt")
             return
 
-    #sending request to read quorum servers
+    # sending request to read quorum servers
     results = []
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        results = [executor.submit(read_server_helper, server, client_info) for server in known_servers]
+        results = [
+            executor.submit(read_server_helper, server, client_info)
+            for server in known_servers
+        ]
 
-    #getting response from read quorum servers
+    # getting response from read quorum servers
     name_timestamp_mapping = {}
     for future in concurrent.futures.as_completed(results):
         response = future.result()
         if response.status == replica_pb2.Status.SUCCESS:
-            name_timestamp_mapping[response.timestamp] = [response.name, response.content, response.uuid, response.status]
-        
-    #getting latest version of file
+            name_timestamp_mapping[response.timestamp] = [
+                response.name,
+                response.content,
+                response.uuid,
+                response.status,
+            ]
+
+    # getting latest version of file
     max_key = max(name_timestamp_mapping, key=name_timestamp_mapping.get)
     logger.info(f"Status: {name_timestamp_mapping[max_key][3]}")
     logger.info(f"File name: {name_timestamp_mapping[max_key][0]}")
@@ -165,13 +182,15 @@ def delete_file(logger):
         logger.info(f"List of write replicas {response.servers}")
         known_servers = response.servers
 
-    #getting user input
-    #TODO: check if file uuid exists or not
-    while (True):
+    # getting user input
+    # TODO: check if file uuid exists or not
+    while True:
         try:
             client_info = replica_pb2.ClientRequest()
-            file_uuid = input("Enter the UUID of the file (leave blank if creating new file): ")
-            if (file_uuid == ""):
+            file_uuid = input(
+                "Enter the UUID of the file (leave blank if creating new file): "
+            )
+            if file_uuid == "":
                 raise ValueError
             else:
                 client_info.uuid = file_uuid
@@ -182,21 +201,28 @@ def delete_file(logger):
         except KeyboardInterrupt:
             logger.error("Keyboard interrupt")
             return
-    
-    #sending request to write quorum servers
+
+    # sending request to write quorum servers
     results = []
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        results = [executor.submit(write_server_helper, server, client_info) for server in known_servers]
-    
-    #getting response from write quorum servers
+        results = [
+            executor.submit(write_server_helper, server, client_info)
+            for server in known_servers
+        ]
+
+    # getting response from write quorum servers
     for future in concurrent.futures.as_completed(results):
         response = future.result()
         if response.status == replica_pb2.Status.SUCCESS:
-            logger.info(f"File deleted successfully with UUID {response.uuid} and version {response.timestamp} : {response.status}")
+            logger.info(
+                f"File deleted successfully with UUID {response.uuid} and version {response.timestamp} : {response.status}"
+            )
         else:
-            logger.error(f"File not deleted successfully with UUID {response.uuid} and version {response.timestamp} : {response.status}")
+            logger.error(
+                f"File not deleted successfully with UUID {response.uuid} and version {response.timestamp} : {response.status}"
+            )
 
-    
+
 def get_served():
     # TODO: add receiving logic
     # fetch replicas from registry server
@@ -219,7 +245,7 @@ def get_served():
             # write
             # TODO: add write logic
             write_file(logger)
-            
+
         elif choice == 2:
             # read
             # TODO: add read logic
