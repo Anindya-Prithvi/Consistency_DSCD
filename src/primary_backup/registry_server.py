@@ -22,6 +22,9 @@ import registry_server_pb2_grpc
 import replica_pb2
 import replica_pb2_grpc
 
+
+global logger, MAXSERVERS, EXPOSE_IP, PORT, LOGFILE, registered, primary_replica
+
 logger = logging.getLogger("registrar")
 logger.setLevel(logging.INFO)
 MAXSERVERS = 500  # default, changeable by command line arg

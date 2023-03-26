@@ -15,6 +15,8 @@ import registry_server_pb2
 import registry_server_pb2_grpc
 import os
 
+global _server_id, logger, LOGFILE, REGISTRY_ADDR, EXPOSE_IP, PORT, PRIMARY_SERVER, IS_PRIMARY, REPLICAS
+
 _server_id = str(uuid.uuid4())[:6]  # private
 logger = logging.getLogger(f"server-{_server_id}")
 logger.setLevel(logging.INFO)
@@ -77,37 +79,7 @@ class Serve(replica_pb2_grpc.ServeServicer):
     def Delete(self, request, context):
         return super().Delete(request, context)
 
-    # below for reference
-    # def RegisterServer(self, request, context):
-    #     logger.info(
-    #         "JOIN REQUEST FROM %s",
-    #         context.peer(),
-    #     )
-    #     if len(registered.servers) >= MAXSERVERS:
-    #         return registry_server_pb2.Success(value=False)
-    #     if any(
-    #         i.id == request.id or i.addr == request.addr for i in registered.servers
-    #     ):
-    #         return registry_server_pb2.Success(value=False)
-
-    #     registered.servers.add(id=request.id, addr=request.addr)
-    #     if primary_replica is None:
-    #         primary_replica = (request.ip, request.port)
-    #     else:
-    #         pass
-
-    #     return registry_server_pb2.Server_information(
-    #         ip=primary_replica[0], port=primary_replica[1]
-    #     )
-
-    # def GetServerList(self, request, context):
-    #     logger.info(
-    #         "SERVER LIST REQUEST FROM %s",
-    #         context.peer(),
-    #     )
-    #     return registered
-
-
+    
 def serve():
     # TODO: server cleints
     port = str(PORT)
