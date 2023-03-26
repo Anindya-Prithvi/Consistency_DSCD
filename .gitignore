@@ -6,6 +6,9 @@ __pycache__/
 # r/w junk
 replicas/
 
+# ruff >>>>
+.ruff_cache/
+
 # C extensions
 *.so
 

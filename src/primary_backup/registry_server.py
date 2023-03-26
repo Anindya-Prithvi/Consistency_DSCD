@@ -1,18 +1,3 @@
-# Registry server:
-# [done] 1. The registry server resides at a known address (ip + port)
-# [done] 2. The registry server stores each replica’s ip address (localhost) and port number -
-#           localhost:8888
-# [done] 3. Whenever a new replica comes up, it informs the registry server of its liveness
-# [done]    a. Each replica shares its ip address and port with the registry server.
-# [done]    b. Registry server marks the first replica as the primary replica.
-# [done]    c. In response to each replica, the registry server always sends the information (ip +
-#              port) about the primary server.
-#           d. The registry server also needs to tell the primary replica about the joining of a
-#               new replica (send the ip + port of the new replica to the primary replica).
-# [done] 4. A client should get the list of replicas (list of ip address + port) from the registry server on
-# startup.
-
-# Majority of code adopted from our implementation of assignment 1 (obviosly)
 from concurrent import futures
 import logging
 import grpc
