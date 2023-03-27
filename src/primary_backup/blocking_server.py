@@ -10,12 +10,13 @@ import time
 import datetime
 
 class Primera(replica_pb2_grpc.PrimeraServicer):
-    def __init__(self, REPLICAS):
+    def __init__(self, logger, REPLICAS):
+        self.logger = logger
         self.REPLICAS = REPLICAS
         super().__init__()
 
     def RecvReplica(self, request, context):
-        logger.info("RECEIVED NEW REGISTERED SERVER")
+        self.logger.info("RECEIVED NEW REGISTERED SERVER")
         # check if already in self.REPLICAS.servers
         if any(i.ip == request.ip and i.port == request.port for i in self.REPLICAS.servers):
             return registry_server_pb2.Success(value=False)
@@ -24,12 +25,13 @@ class Primera(replica_pb2_grpc.PrimeraServicer):
             return registry_server_pb2.Success(value=True)
 
 class Backup(replica_pb2_grpc.BackupServicer):
-    def __init__(self, UUID_MAP):
+    def __init__(self, logger, UUID_MAP):
+        self.logger = logger
         self.UUID_MAP = UUID_MAP
         super().__init__()
 
     def WriteBackup(self, request, context):
-        logger.info("WRITE FROM PRIMERA")
+        self.logger.info("WRITE FROM PRIMERA")
         # write to file
         fobj = os.open("replicas/" + str(_server_id) + "/" + request.name, os.O_CREAT | os.O_WRONLY)
         os.write(fobj, request.content.encode())
@@ -39,7 +41,7 @@ class Backup(replica_pb2_grpc.BackupServicer):
         return registry_server_pb2.Success(value=True)
 
     def DeleteBackup(self, request, context):
-        logger.info("DELETE FROM PRIMERA")
+        self.logger.info("DELETE FROM PRIMERA")
         # delete file
         os.remove("replicas/" + str(_server_id) + "/" + request.name)
         # deref in map, timestamp of deletion
@@ -56,7 +58,8 @@ def SendToBackups(request, known_replica):
 
 class Serve(replica_pb2_grpc.ServeServicer):
 
-    def __init__(self, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS):
+    def __init__(self, logger, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS):
+        self.logger = logger
         self.IS_PRIMARY = IS_PRIMARY
         self.PRIMARY_SERVER = PRIMARY_SERVER
         self.UUID_MAP = UUID_MAP
@@ -65,7 +68,7 @@ class Serve(replica_pb2_grpc.ServeServicer):
     
     def Write(self, request, context):
         # TODO: Handle mentioned cases
-        logger.info("WRITE REQUEST FROM %s", context.peer())
+        self.logger.info("WRITE REQUEST FROM %s", context.peer())
         # send to primary replica
         if self.IS_PRIMARY:
             # write to file
@@ -106,7 +109,7 @@ class Serve(replica_pb2_grpc.ServeServicer):
 
     def Read(self, request, context):
         # TODO: Handle the mentioned cases
-        logger.info("READ REQUEST FROM %s", context.peer())
+        self.logger.info("READ REQUEST FROM %s", context.peer())
         # if file in fs
         try:
             with open(request.name, "r") as f:
@@ -157,12 +160,12 @@ def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
 
     UUID_MAP = {}
     REPLICAS = registry_server_pb2.Server_book()
-    replica_pb2_grpc.add_ServeServicer_to_server(Serve(IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS), server)
+    replica_pb2_grpc.add_ServeServicer_to_server(Serve(logger,IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS), server)
 
     if IS_PRIMARY:
-        replica_pb2_grpc.add_PrimeraServicer_to_server(Primera(REPLICAS), server)
+        replica_pb2_grpc.add_PrimeraServicer_to_server(Primera(logger,REPLICAS), server)
     else:
-        replica_pb2_grpc.add_BackupServicer_to_server(Backup(UUID_MAP), server)
+        replica_pb2_grpc.add_BackupServicer_to_server(Backup(logger,UUID_MAP), server)
     server.add_insecure_port(EXPOSE_IP + ":" + port)  # no TLS moment
     server.start()
 
@@ -177,7 +180,7 @@ def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
             server.stop(0)
             exit(0)
         except EOFError:
-            logger.warning("Server will now go headless (no input from stdin)")
+            # logger.warning("Server will now go headless (no input from stdin)")
             server.wait_for_termination()
             exit(0)
         except:
@@ -205,7 +208,7 @@ if __name__ == "__main__":
     agr.add_argument("--port", type=int, help="port number", required=True)
     agr.add_argument("--log", type=str, help="log file name", default=None)
     agr.add_argument(
-        "--addr",
+        "--raddr",
         type=str,
         help="address of registry server if customized",
         default=REGISTRY_ADDR,

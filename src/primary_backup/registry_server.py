@@ -8,15 +8,19 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
     primary_replica = None
     registered = registry_server_pb2.Server_book()
 
+    def __init__(self, logger):
+        self.logger = logger
+        super().__init__()
+
     def RegisterServer(self, request, context):
-        logger.info(
+        self.logger.info(
             "JOIN REQUEST FROM %s",
             context.peer(),
         )
 
         # check if server is already registered
         if any(i.ip == request.ip and i.port == request.port for i in self.registered.servers):
-            logger.warning("Server already registered")
+            self.logger.warning("Server already registered")
             return registry_server_pb2.Server_information(
                 ip=self.primary_replica.ip, port=self.primary_replica.port
             )
@@ -34,7 +38,7 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
             ) as channel:
                 stub = replica_pb2_grpc.PrimeraStub(channel)
                 response = stub.RecvReplica(request)
-                logger.info(
+                self.logger.info(
                     f"Primary replica informed of new replica: {response.value}"
                 )
 
@@ -43,7 +47,7 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
         )
 
     def GetServerList(self, request, context):
-        logger.info(
+        self.logger.info(
             "SERVER LIST REQUEST FROM %s",
             context.peer(),
         )
@@ -53,7 +57,7 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
 def serve(logger, EXPOSE_IP, PORT):
     port = str(PORT)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    registry_server_pb2_grpc.add_MaintainServicer_to_server(Maintain(), server)
+    registry_server_pb2_grpc.add_MaintainServicer_to_server(Maintain(logger), server)
     server.add_insecure_port(EXPOSE_IP + ":" + port)  # no TLS moment
     server.start()
 
@@ -68,7 +72,7 @@ def serve(logger, EXPOSE_IP, PORT):
             server.stop(0)
             exit(0)
         except EOFError:
-            logger.warning("Server will now go headless (no input from stdin)")
+            # logger.warning("Server will now go headless (no input from stdin)")
             server.wait_for_termination()
             exit(0)
         except:
