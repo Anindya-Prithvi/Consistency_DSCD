@@ -2,7 +2,7 @@ syntax = "proto3";
 import "registry_server.proto";
 
 message FileObject {
-    optional bool status = 1;
+    optional string status = 1;
     optional string uuid = 2;
     optional string version = 3;
     optional string content = 4;
