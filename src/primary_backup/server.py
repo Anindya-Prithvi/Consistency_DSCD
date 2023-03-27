@@ -25,6 +25,7 @@ PORT = None
 PRIMARY_SERVER = None  # no one is primary
 IS_PRIMARY = False
 REPLICAS = registry_server_pb2.Server_book()
+UUID_MAP = replica_pb2.uuid_map()
 
 # make directory for replicas files
 if not os.path.exists("replicas"):

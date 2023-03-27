@@ -1,17 +1,12 @@
 syntax = "proto3";
 import "registry_server.proto";
 
-message ClientRequest {
-    optional string name = 1;
-    optional string content = 2;
-    optional string uuid = 3;
-}
-
-message ReplicaResponse {
+message FileObject {
     optional bool status = 1;
     optional string uuid = 2;
-    optional string timestamp = 3;
+    optional string version = 3;
     optional string content = 4;
+    optional string name = 5;
 }
 
 service Primera {
@@ -19,7 +14,12 @@ service Primera {
 }
 
 service Serve {
-    rpc Write(ClientRequest) returns (ReplicaResponse) {}
-    rpc Read(ClientRequest) returns (ReplicaResponse) {}
-    rpc Delete(ClientRequest) returns (ReplicaResponse) {}
+    rpc Write(FileObject) returns (FileObject) {}
+    rpc Read(FileObject) returns (FileObject) {}
+    rpc Delete(FileObject) returns (FileObject) {}
+}
+
+service Backup {
+    rpc WriteBackup(FileObject) returns (Success) {}
+    rpc DeleteBackup(FileObject) returns (Success) {}
 }

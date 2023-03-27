@@ -6,7 +6,8 @@ import registry_server_pb2 as registry__server__pb2
 
 
 class MaintainStub(object):
-    """/ Maintains the Server_book and fetches servers for incoming clients"""
+    """/ Maintains the Server_book and fetches servers for incoming clients
+    """
 
     def __init__(self, channel):
         """Constructor.
@@ -15,110 +16,89 @@ class MaintainStub(object):
             channel: A grpc.Channel.
         """
         self.RegisterServer = channel.unary_unary(
-            "/Maintain/RegisterServer",
-            request_serializer=registry__server__pb2.Server_information.SerializeToString,
-            response_deserializer=registry__server__pb2.Server_information.FromString,
-        )
+                '/Maintain/RegisterServer',
+                request_serializer=registry__server__pb2.Server_information.SerializeToString,
+                response_deserializer=registry__server__pb2.Server_information.FromString,
+                )
         self.GetServerList = channel.unary_unary(
-            "/Maintain/GetServerList",
-            request_serializer=registry__server__pb2.Empty.SerializeToString,
-            response_deserializer=registry__server__pb2.Server_book.FromString,
-        )
+                '/Maintain/GetServerList',
+                request_serializer=registry__server__pb2.Empty.SerializeToString,
+                response_deserializer=registry__server__pb2.Server_book.FromString,
+                )
 
 
 class MaintainServicer(object):
-    """/ Maintains the Server_book and fetches servers for incoming clients"""
+    """/ Maintains the Server_book and fetches servers for incoming clients
+    """
 
     def RegisterServer(self, request, context):
-        """/ register a server with it's name and address, return a success value"""
+        """/ register a server with it's name and address, return a success value
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def GetServerList(self, request, context):
-        """/ get the server list for a client who may want to know about existing servers"""
+        """/ get the server list for a client who may want to know about existing servers
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_MaintainServicer_to_server(servicer, server):
     rpc_method_handlers = {
-        "RegisterServer": grpc.unary_unary_rpc_method_handler(
-            servicer.RegisterServer,
-            request_deserializer=registry__server__pb2.Server_information.FromString,
-            response_serializer=registry__server__pb2.Server_information.SerializeToString,
-        ),
-        "GetServerList": grpc.unary_unary_rpc_method_handler(
-            servicer.GetServerList,
-            request_deserializer=registry__server__pb2.Empty.FromString,
-            response_serializer=registry__server__pb2.Server_book.SerializeToString,
-        ),
+            'RegisterServer': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterServer,
+                    request_deserializer=registry__server__pb2.Server_information.FromString,
+                    response_serializer=registry__server__pb2.Server_information.SerializeToString,
+            ),
+            'GetServerList': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetServerList,
+                    request_deserializer=registry__server__pb2.Empty.FromString,
+                    response_serializer=registry__server__pb2.Server_book.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-        "Maintain", rpc_method_handlers
-    )
+            'Maintain', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
-# This class is part of an EXPERIMENTAL API.
+ # This class is part of an EXPERIMENTAL API.
 class Maintain(object):
-    """/ Maintains the Server_book and fetches servers for incoming clients"""
+    """/ Maintains the Server_book and fetches servers for incoming clients
+    """
 
     @staticmethod
-    def RegisterServer(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
-        return grpc.experimental.unary_unary(
-            request,
+    def RegisterServer(request,
             target,
-            "/Maintain/RegisterServer",
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/Maintain/RegisterServer',
             registry__server__pb2.Server_information.SerializeToString,
             registry__server__pb2.Server_information.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-        )
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def GetServerList(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
-        return grpc.experimental.unary_unary(
-            request,
+    def GetServerList(request,
             target,
-            "/Maintain/GetServerList",
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/Maintain/GetServerList',
             registry__server__pb2.Empty.SerializeToString,
             registry__server__pb2.Server_book.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-        )
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
