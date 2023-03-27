@@ -26,6 +26,13 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
             context.peer(),
         )
 
+        # check if server is already registered
+        if any(i.ip == request.ip and i.port == request.port for i in registered.servers):
+            logger.warning("Server already registered")
+            return registry_server_pb2.Server_information(
+                ip=primary_replica.ip, port=primary_replica.port
+            )
+
         registered.servers.add(ip=request.ip, port=request.port)
 
         global primary_replica

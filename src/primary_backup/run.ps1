@@ -1,5 +1,6 @@
 # run servers in background
 $bgServer = Read-Host -Prompt "Run servers in background? [hidden/ normal(default)]"
+$bnbServer = Read-Host -Prompt "Blocking or non blocking [nonb/ b(default)]"
 
 # list to store all pids
 $pidList = @()
@@ -11,7 +12,14 @@ else {
     $bgServer = "normal"
 }
 
-Start-Process python "registry_server.py" -PassThru -WindowStyle $bgServer
+if ($bnbServer -eq "nonb") {
+    $bnbServer = "non_"
+}
+else {
+    $bnbServer = ""
+}
+
+$pidList += Start-Process python "registry_server.py" -PassThru -WindowStyle $bgServer
 
 # ask for number of servers to run
 $numServers = Read-Host -Prompt "Enter number of servers to run"
@@ -19,7 +27,7 @@ $numServers = Read-Host -Prompt "Enter number of servers to run"
 # run servers
 for ($i = 0; $i -lt $numServers; $i++) {
     # start server and add to pidlist using Start-Process python "server.py --port 1200$i" -PassThru -WindowStyle $bgServer
-    $pidList += Start-Process python "server.py --port 1200$i" -PassThru -WindowStyle $bgServer
+    $pidList += Start-Process python $bnbServer"blocking_server.py --port 1200$i" -PassThru -WindowStyle $bgServer
 }
 
 # Confirm launches

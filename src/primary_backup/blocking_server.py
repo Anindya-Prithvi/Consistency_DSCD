@@ -66,14 +66,21 @@ class Backup(replica_pb2_grpc.BackupServicer):
         logger.info("DELETE FROM PRIMERA")
         # delete file
         os.remove("replicas/" + str(_server_id) + "/" + request.name)
-        # deref in map, timestamp of deletion formatted like "12/03/2023 11:15:11"
-        UUID_MAP[request.uuid] = ("", datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+        # deref in map, timestamp of deletion
+        UUID_MAP[request.uuid] = ("", "WHATEVER primera gave")
         return registry_server_pb2.Success(value=True)
 
+def SendToBackups(request, known_replica):
+    with grpc.insecure_channel(
+        known_replica.ip + ":" + known_replica.port
+    ) as channel:
+        stub = replica_pb2_grpc.BackupStub(channel)
+        response = stub.WriteBackup(request)
+        return response.value
 
 class Serve(replica_pb2_grpc.ServeServicer):
-    # TODO: All 3
     def Write(self, request, context):
+        # TODO: Handle mentioned cases
         logger.info("WRITE REQUEST FROM %s", context.peer())
         # send to primary replica
         if IS_PRIMARY:
@@ -82,16 +89,10 @@ class Serve(replica_pb2_grpc.ServeServicer):
             os.write(fobj, request.content.encode())
             os.close(fobj)
             # add to map
-            UUID_MAP[request.uuid] = (request.name, request.version)
+            # Calculate version
+            version = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            UUID_MAP[request.uuid] = (request.name, version)
             # send to backups using thread worker pool
-
-            def SendToBackups(request, known_replica):
-                with grpc.insecure_channel(
-                    known_replica.ip + ":" + known_replica.port
-                ) as channel:
-                    stub = replica_pb2_grpc.BackupStub(channel)
-                    response = stub.WriteBackup(request)
-                    return response.value
 
             ff_tpool = futures.ThreadPoolExecutor(max_workers=20)
             ff = ff_tpool.map(
@@ -107,7 +108,7 @@ class Serve(replica_pb2_grpc.ServeServicer):
                 return replica_pb2.FileObject(
                     status = "Success",
                     uuid=request.uuid, 
-                    version=request.version
+                    version=version
                 )
             else:
                 return registry_server_pb2.Success(value=False)
@@ -120,6 +121,7 @@ class Serve(replica_pb2_grpc.ServeServicer):
                 return response
 
     def Read(self, request, context):
+        # TODO: Handle the mentioned cases
         logger.info("READ REQUEST FROM %s", context.peer())
         # if file in fs
         try:
@@ -134,7 +136,6 @@ class Serve(replica_pb2_grpc.ServeServicer):
 
 
 def serve():
-    # TODO: server cleints
     port = str(PORT)
 
     # connect to registry
