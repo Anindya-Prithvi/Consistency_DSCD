@@ -1,6 +1,9 @@
 # run servers in background
 $bgServer = Read-Host -Prompt "Run servers in background? [hidden/ normal(default)]"
 
+# list to store all pids
+$pidList = @()
+
 if ($bgServer -eq "hidden") {
     $bgServer = "hidden"
 }
@@ -15,7 +18,8 @@ $numServers = Read-Host -Prompt "Enter number of servers to run"
 
 # run servers
 for ($i = 0; $i -lt $numServers; $i++) {
-    Start-Process python "server.py --port 1200$i" -PassThru -WindowStyle $bgServer
+    # start server and add to pidlist using Start-Process python "server.py --port 1200$i" -PassThru -WindowStyle $bgServer
+    $pidList += Start-Process python "server.py --port 1200$i" -PassThru -WindowStyle $bgServer
 }
 
 # Confirm launches
@@ -26,8 +30,12 @@ $numServers = Read-Host -Prompt "Enter number of clients to run"
 
 # run clients
 for ($i = 0; $i -lt $numServers; $i++) {
-    Start-Process python "client.py" -PassThru
+    $pidList += Start-Process python "client.py" -PassThru
 }
 
 $null = Read-Host -Prompt "Press Enter to kill all windows terminal instances"
-Stop-process -Name WindowsTerminal
+
+# kill all processes
+foreach ($pid_i in $pidList) {
+    Stop-Process -Id $pid_i.Id
+}
