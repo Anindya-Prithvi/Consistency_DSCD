@@ -1,23 +1,3 @@
-# CLIENT
-# 1. WRITE operation
-#    a. The client first generates a UUID for the new file.
-#       i. If it is updating an existing file, then it reuses the same UUID which was
-#          generated previously.
-#    b. Client then sends uuid, filename, and content of the text file to any one replica.
-#    c. Replica responds back with the uuid of the saved text file and version timestamp.
-
-"""
-For example:
-Client sends -
-Name : "Formula1ChampionsList"
-Content : "M. Schumacher, L. Hamilton, J.M. Fangio."
-UUID : 03ff7ebe-bf8e-11ed-89d9-76aef1e817c5
-Server sends -
-Status: SUCCESS
-UUID : 03ff7ebe-bf8e-11ed-89d9-76aef1e817c5
-Version : "12/03/2023 11:15:11
-"""
-
 import uuid
 import logging
 import grpc
@@ -34,12 +14,16 @@ LOGFILE = None  # default
 REGISTRY_ADDR = "localhost:1337"
 OPTIONS = """\
 Please choose from the following options:
-    1. WRITE
-    2. READ
-    3. DELETE
-    4. EXIT\
+    1. Write
+    2. Read
+    3. Delete
+    ## utility options ##
+    4. Print known UUIDs
+    5. Print known servers
+    6. Exit
 """
-KNOWN_SERVERS = []
+KNOWN_SERVERS = set()
+UUID_STORE = set()
 
 def pretty_print_servers(servers):
     for i, server in enumerate(servers):
@@ -47,13 +31,15 @@ def pretty_print_servers(servers):
 
 
 def get_served():
-    # TODO: add receiving logic
+    global KNOWN_SERVERS, UUID_STORE
     # fetch replicas from registry server
+    # no need to do it again since no new replicas are assumed to be added
     with grpc.insecure_channel(REGISTRY_ADDR) as channel:
         stub = registry_server_pb2_grpc.MaintainStub(channel)
         response = stub.GetServerList(registry_server_pb2.Empty())
         logger.info(f"Got server list from registry server")
-        KNOWN_SERVERS = response.servers
+        
+        KNOWN_SERVERS = set(response.servers)
 
     while True:
         # give user options of read write and delete
@@ -91,6 +77,7 @@ def get_served():
             # generate uuid
             if file_uuid == "":
                 file_uuid = str(uuid.uuid4())
+                UUID_STORE.add(file_uuid)
 
             # validate uuid
             try:
@@ -125,13 +112,89 @@ def get_served():
             
         elif choice == 2:
             # read
-            # TODO: add read logic
-            pass
+            logger.info("Enter UUID (Required)")
+            file_uuid = input().strip()
+
+            # validate uuid
+            try:
+                uuid.UUID(file_uuid)
+            except ValueError:
+                logger.error("Invalid UUID")
+                continue
+
+            # choose a replica
+            logger.info("Choose which replica to read from /^[0-9]+$/:")
+            pretty_print_servers(KNOWN_SERVERS)
+            try:
+                replica = int(input())
+                if replica > len(KNOWN_SERVERS) or replica < 1:
+                    raise ValueError
+                replica = KNOWN_SERVERS[replica-1]
+            except ValueError:
+                logger.error("Invalid choice")
+                continue
+
+            # send to replica
+            with grpc.insecure_channel(f"{replica.ip}:{replica.port}") as channel:
+                stub = replica_pb2_grpc.ServeStub(channel)
+                response = stub.Read(
+                    replica_pb2.FileObject(
+                        uuid=file_uuid,
+                    )
+                )
+                logger.info(f"Got response from replica {replica.ip}:{replica.port}")
+                logger.info(f"Status: {response.status}")
+                logger.info(f"Name: {response.name}")
+                logger.info(f"Content: {response.content}")
+                logger.info(f"Version: {response.version}")
+            
         elif choice == 3:
             # delete
-            # TODO: add delete logic
-            pass
+            
+            # choose a replica
+            logger.info("Choose which replica to delete from /^[0-9]+$/:")
+            pretty_print_servers(KNOWN_SERVERS)
+            try:
+                replica = int(input())
+                if replica > len(KNOWN_SERVERS) or replica < 1:
+                    raise ValueError
+                replica = KNOWN_SERVERS[replica-1]
+            except ValueError:
+                logger.error("Invalid choice")
+                continue
+
+            # get a uuid
+            logger.info("Enter UUID (Required)")
+            file_uuid = input().strip()
+            
+            # validate uuid
+            try:
+                uuid.UUID(file_uuid)
+            except ValueError:
+                logger.error("Invalid UUID")
+                continue
+
+            # send to replica
+            with grpc.insecure_channel(f"{replica.ip}:{replica.port}") as channel:
+                stub = replica_pb2_grpc.ServeStub(channel)
+                response = stub.Delete(
+                    replica_pb2.FileObject(
+                        uuid=file_uuid,
+                    )
+                )
+                logger.info(f"Got response from replica {replica.ip}:{replica.port}")
+                logger.info(f"Status: {response.status}")
+
         elif choice == 4:
+            # print known uuids
+            logger.info("Created UUIDs:")
+            for uuid in UUID_STORE:
+                print(uuid)
+        elif choice == 5:
+            # print known servers
+            logger.info("Known servers:")
+            pretty_print_servers(KNOWN_SERVERS)
+        elif choice == 6:
             # exit
             logger.info("Exiting...")
             exit(0)
