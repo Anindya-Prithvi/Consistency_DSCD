@@ -2,10 +2,7 @@ from concurrent import futures
 import logging
 import grpc
 import argparse
-import registry_server_pb2
-import registry_server_pb2_grpc
-import replica_pb2
-import replica_pb2_grpc
+import registry_server_pb2, registry_server_pb2_grpc, replica_pb2, replica_pb2_grpc
 
 class Maintain(registry_server_pb2_grpc.MaintainServicer):
     primary_replica = None

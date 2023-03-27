@@ -4,10 +4,7 @@ import uuid
 import logging
 import grpc
 import argparse
-import replica_pb2
-import replica_pb2_grpc
-import registry_server_pb2
-import registry_server_pb2_grpc
+import registry_server_pb2, registry_server_pb2_grpc, replica_pb2, replica_pb2_grpc
 import os
 import time
 import datetime
