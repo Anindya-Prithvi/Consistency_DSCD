@@ -1,9 +1,3 @@
-# Any client can interact with any replica directly. There can be multiple clients
-# concurrently interacting with the data store.
-
-# Each file can be assumed to be very small in size ( 200-500 characters)
-
-
 from concurrent import futures
 from functools import reduce
 import uuid
@@ -18,40 +12,25 @@ import os
 import time
 import datetime
 
-#TODO: Handle edge cases in read/write/delete, only basics done
-
-_server_id = str(uuid.uuid4())[:6]  # private
-logger = logging.getLogger(f"server-{_server_id}")
-logger.setLevel(logging.INFO)
-LOGFILE = None  # default
-REGISTRY_ADDR = "[::1]:1337"
-EXPOSE_IP = "[::1]"
-PORT = None
-PRIMARY_SERVER = None  # no one is primary
-IS_PRIMARY = False
-REPLICAS = registry_server_pb2.Server_book()
-UUID_MAP = dict() # key, value = uuid, (name, version)
-
-# make directory for replicas files
-if not os.path.exists("replicas"):
-    os.mkdir("replicas")
-
-# then make directory for itself
-if not os.path.exists("replicas/" + str(_server_id)):
-    os.mkdir("replicas/" + str(_server_id))
-
-
 class Primera(replica_pb2_grpc.PrimeraServicer):
+    def __init__(self, REPLICAS):
+        self.REPLICAS = REPLICAS
+        super().__init__()
+
     def RecvReplica(self, request, context):
         logger.info("RECEIVED NEW REGISTERED SERVER")
-        # check if already in REPLICAS.servers
-        if any(i.ip == request.ip and i.port == request.port for i in REPLICAS.servers):
+        # check if already in self.REPLICAS.servers
+        if any(i.ip == request.ip and i.port == request.port for i in self.REPLICAS.servers):
             return registry_server_pb2.Success(value=False)
         else:
-            REPLICAS.servers.add(ip=request.ip, port=request.port)
+            self.REPLICAS.servers.add(ip=request.ip, port=request.port)
             return registry_server_pb2.Success(value=True)
 
 class Backup(replica_pb2_grpc.BackupServicer):
+    def __init__(self, UUID_MAP):
+        self.UUID_MAP = UUID_MAP
+        super().__init__()
+
     def WriteBackup(self, request, context):
         logger.info("WRITE FROM PRIMERA")
         # write to file
@@ -59,7 +38,7 @@ class Backup(replica_pb2_grpc.BackupServicer):
         os.write(fobj, request.content.encode())
         os.close(fobj)
         # add to map
-        UUID_MAP[request.uuid] = (request.name, request.version)
+        self.UUID_MAP[request.uuid] = (request.name, request.version)
         return registry_server_pb2.Success(value=True)
 
     def DeleteBackup(self, request, context):
@@ -67,7 +46,7 @@ class Backup(replica_pb2_grpc.BackupServicer):
         # delete file
         os.remove("replicas/" + str(_server_id) + "/" + request.name)
         # deref in map, timestamp of deletion
-        UUID_MAP[request.uuid] = ("", "WHATEVER primera gave")
+        self.UUID_MAP[request.uuid] = ("", "WHATEVER primera gave")
         return registry_server_pb2.Success(value=True)
 
 def SendToBackups(request, known_replica):
@@ -79,11 +58,19 @@ def SendToBackups(request, known_replica):
         return response.value
 
 class Serve(replica_pb2_grpc.ServeServicer):
+
+    def __init__(self, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS):
+        self.IS_PRIMARY = IS_PRIMARY
+        self.PRIMARY_SERVER = PRIMARY_SERVER
+        self.UUID_MAP = UUID_MAP
+        self.REPLICAS = REPLICAS
+        super().__init__()    
+    
     def Write(self, request, context):
         # TODO: Handle mentioned cases
         logger.info("WRITE REQUEST FROM %s", context.peer())
         # send to primary replica
-        if IS_PRIMARY:
+        if self.IS_PRIMARY:
             # write to file
             fobj = os.open("replicas/" + str(_server_id) + "/" + request.name, os.O_CREAT | os.O_WRONLY)
             os.write(fobj, request.content.encode())
@@ -91,14 +78,14 @@ class Serve(replica_pb2_grpc.ServeServicer):
             # add to map
             # Calculate version
             version = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-            UUID_MAP[request.uuid] = (request.name, version)
+            self.UUID_MAP[request.uuid] = (request.name, version)
             # send to backups using thread worker pool
 
             ff_tpool = futures.ThreadPoolExecutor(max_workers=20)
             ff = ff_tpool.map(
                 SendToBackups,
-                [request] * len(REPLICAS.servers),
-                REPLICAS.servers,
+                [request] * len(self.REPLICAS.servers),
+                self.REPLICAS.servers,
             )
 
             # accumulate return values
@@ -114,7 +101,7 @@ class Serve(replica_pb2_grpc.ServeServicer):
                 return registry_server_pb2.Success(value=False)
         else:
             with grpc.insecure_channel(
-                PRIMARY_SERVER.ip + ":" + PRIMARY_SERVER.port
+                self.PRIMARY_SERVER.ip + ":" + self.PRIMARY_SERVER.port
             ) as channel:
                 stub = replica_pb2_grpc.ServeStub(channel)
                 response = stub.Write(request)
@@ -135,8 +122,17 @@ class Serve(replica_pb2_grpc.ServeServicer):
         return super().Delete(request, context)
 
 
-def serve():
+def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
+    # make directory for self.replicas files
+    if not os.path.exists("replicas"):
+        os.mkdir("replicas")
+
+    # then make directory for itself
+    if not os.path.exists("replicas/" + str(_server_id)):
+        os.mkdir("replicas/" + str(_server_id))
+
     port = str(PORT)
+    IS_PRIMARY = False
 
     # connect to registry
     with grpc.insecure_channel(REGISTRY_ADDR) as channel:
@@ -146,13 +142,13 @@ def serve():
         )
         if response:
             logger.info("Successfully registered with registry")
-            global PRIMARY_SERVER
+            
             PRIMARY_SERVER = registry_server_pb2.Server_information(
                 ip=response.ip, port=response.port
             )
 
             if response.ip == EXPOSE_IP and response.port == port:
-                global IS_PRIMARY
+                
                 IS_PRIMARY = True
                 logger.info("This is the primary replica")
                 # Launch primary replica receive service
@@ -161,12 +157,15 @@ def serve():
             exit(1)
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    replica_pb2_grpc.add_ServeServicer_to_server(Serve(), server)
+
+    UUID_MAP = {}
+    REPLICAS = registry_server_pb2.Server_book()
+    replica_pb2_grpc.add_ServeServicer_to_server(Serve(IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS), server)
 
     if IS_PRIMARY:
-        replica_pb2_grpc.add_PrimeraServicer_to_server(Primera(), server)
+        replica_pb2_grpc.add_PrimeraServicer_to_server(Primera(REPLICAS), server)
     else:
-        replica_pb2_grpc.add_BackupServicer_to_server(Backup(), server)
+        replica_pb2_grpc.add_BackupServicer_to_server(Backup(UUID_MAP), server)
     server.add_insecure_port(EXPOSE_IP + ":" + port)  # no TLS moment
     server.start()
 
@@ -191,6 +190,15 @@ def serve():
 
 
 if __name__ == "__main__":
+    _server_id = str(uuid.uuid4())[:6]  # private
+    logger = logging.getLogger(f"server-{_server_id}")
+    logger.setLevel(logging.INFO)
+    LOGFILE = None  # default
+    REGISTRY_ADDR = "[::1]:1337"
+    EXPOSE_IP = "[::1]"
+    PORT = None
+    
+    #TODO: Handle edge cases in read/write/delete, only basics done
     # get sys args
 
     agr = argparse.ArgumentParser()
@@ -213,4 +221,4 @@ if __name__ == "__main__":
     EXPOSE_IP = args.ip
 
     logging.basicConfig(filename=LOGFILE, level=logging.INFO)
-    serve()
+    serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT)

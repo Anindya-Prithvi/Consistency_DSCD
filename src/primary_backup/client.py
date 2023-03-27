@@ -7,39 +7,23 @@ import registry_server_pb2_grpc
 import replica_pb2
 import replica_pb2_grpc
 
-_client_id = uuid.uuid4()  # private
-logger = logging.getLogger(f"client-{str(_client_id)[:6]}")
-logger.setLevel(logging.INFO)
-LOGFILE = None  # default
-REGISTRY_ADDR = "localhost:1337"
-OPTIONS = """\
-Please choose from the following options:
-    1. Write
-    2. Read
-    3. Delete
-    ## utility options ##
-    4. Print known UUIDs
-    5. Print known servers
-    6. Exit
-"""
-KNOWN_SERVERS = set()
-UUID_STORE = set()
-
 def pretty_print_servers(servers):
     for i, server in enumerate(servers):
         print(f"{i+1}. {server.ip}:{server.port}")
 
 
-def get_served():
-    global KNOWN_SERVERS, UUID_STORE
+def get_served(logger, REGISTRY_ADDR, OPTIONS):
     # fetch replicas from registry server
     # no need to do it again since no new replicas are assumed to be added
+
+    UUID_STORE = set()
+
     with grpc.insecure_channel(REGISTRY_ADDR) as channel:
         stub = registry_server_pb2_grpc.MaintainStub(channel)
         response = stub.GetServerList(registry_server_pb2.Empty())
         logger.info(f"Got server list from registry server")
         
-        KNOWN_SERVERS = set(response.servers)
+        KNOWN_SERVERS = response.servers # critical anyways, error handling not done
 
     while True:
         # give user options of read write and delete
@@ -188,8 +172,8 @@ def get_served():
         elif choice == 4:
             # print known uuids
             logger.info("Created UUIDs:")
-            for uuid in UUID_STORE:
-                print(uuid)
+            for uuid_i in UUID_STORE:
+                print(uuid_i)
         elif choice == 5:
             # print known servers
             logger.info("Known servers:")
@@ -202,7 +186,22 @@ def get_served():
 
 if __name__ == "__main__":
     # get sys args
-
+    _client_id = uuid.uuid4()  # private
+    logger = logging.getLogger(f"client-{str(_client_id)[:6]}")
+    logger.setLevel(logging.INFO)
+    LOGFILE = None  # default
+    REGISTRY_ADDR = "[::1]:1337"
+    OPTIONS = """\
+Please choose from the following options:
+    1. Write
+    2. Read
+    3. Delete
+    ## utility options ##
+    4. Print known UUIDs
+    5. Print known servers
+    6. Exit
+"""
+    
     agr = argparse.ArgumentParser()
     agr.add_argument("--log", type=str, help="log file name", default=None)
     agr.add_argument(
@@ -217,4 +216,4 @@ if __name__ == "__main__":
     REGISTRY = args.addr
 
     logging.basicConfig(filename=LOGFILE, level=logging.INFO)
-    get_served()
+    get_served(logger, REGISTRY_ADDR, OPTIONS)
