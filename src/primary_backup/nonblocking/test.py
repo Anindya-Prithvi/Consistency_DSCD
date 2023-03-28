@@ -11,7 +11,7 @@ logger = logging.getLogger("test")
 logger.setLevel(logging.INFO)
 
 # check path has blocking
-if sys.path[-1].find("nonblocking") != -1: print("Not running from blocking directory")
+if sys.path[0].find("nonblocking") == -1: print("Not running from blocking directory")
 # running from project_dir/src/ (assumed pre-push)
 # so we need to add primary_blocking/blocking to sys.path
 sys.path.append("primary_backup/nonblocking")
@@ -85,6 +85,9 @@ class PBBP(unittest.TestCase):
         assert len(resp.version) > 0, "Version not set"
         # can at most print resp.version, nothing to assert
 
+        print("Write acknoledgement has been received but all replicas may not have written, so sleep [INDEF] ")
+        input()
+
     def test05_run_client_read_all(self):
         # using first client
         c1 = self.client_list[0]
@@ -92,7 +95,7 @@ class PBBP(unittest.TestCase):
             resp = c1.read_from_replica(replica, self.client_files[0][0][0])
             # pretty stupid to write on stdout, but ok
             # print(resp)
-            assert resp.status == "SUCCESS", "Write failed"
+            assert resp.status == "SUCCESS", f"Write failed with status {resp.status}"
             assert (
                 resp.name.find(self.client_files[0][0][1]) != -1
             ), f"Names don't match, Expected {self.client_files[0][0][1]} got {resp.name}"
@@ -114,6 +117,9 @@ class PBBP(unittest.TestCase):
         assert resp.uuid == file_uuid, "UUID mismatch"
         assert len(resp.version) > 0, "Version not set"
         # can at most print resp.version, nothing to assert
+
+        print("Write acknoledgement has been received but all replicas may not have written, so sleep [INDEF] ")
+        input()
 
     def test07_run_client_read_all(self):
         # using first client

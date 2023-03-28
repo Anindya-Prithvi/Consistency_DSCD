@@ -1,5 +1,6 @@
 from concurrent import futures
 from functools import reduce
+import queue
 import uuid
 import logging
 import grpc
@@ -8,6 +9,7 @@ import registry_server_pb2, registry_server_pb2_grpc, replica_pb2, replica_pb2_g
 import os
 from time import sleep
 import datetime
+from copy import deepcopy
 
 # TO SIMULATE REALTIME WRITE DELAYS IN BACKUPS (PER GC Comments), sleep is added
 
@@ -88,6 +90,7 @@ class Serve(replica_pb2_grpc.ServeServicer):
         self.UUID_MAP = UUID_MAP
         self.REPLICAS = REPLICAS
         self._server_id = _server_id
+        self.pending_requests = queue.Queue()
         super().__init__()
 
     def Write(self, request, context):
@@ -124,25 +127,13 @@ class Serve(replica_pb2_grpc.ServeServicer):
 
             request.name = fixfilename
 
-            ff_tpool = futures.ThreadPoolExecutor(max_workers=20)
-            ff = ff_tpool.map(
-                SendToBackups,
-                [request] * len(self.REPLICAS.servers),
-                self.REPLICAS.servers,
-                ["write"] * len(self.REPLICAS.servers),
-            )
+            # just add to queue
+            self.pending_requests.put((deepcopy(request), "write"))
 
-            # accumulate return values
-            # check if all backups succeeded
-
-            if reduce(lambda x, y: x and y, ff):
-                return replica_pb2.FileObject(
+            return replica_pb2.FileObject(
                     status="SUCCESS", uuid=request.uuid, version=version
                 )
-            else:
-                return replica_pb2.FileObject(
-                    status="FAILURE",
-                )
+            
         else:
             with grpc.insecure_channel(
                 self.PRIMARY_SERVER.ip + ":" + self.PRIMARY_SERVER.port
@@ -199,25 +190,14 @@ class Serve(replica_pb2_grpc.ServeServicer):
             self.UUID_MAP[request.uuid] = ("", version)
             request.version = version
 
-            # send to backups using thread worker pool
-            ff_tpool = futures.ThreadPoolExecutor(max_workers=20)
-            ff = ff_tpool.map(
-                SendToBackups,
-                [request] * len(self.REPLICAS.servers),
-                self.REPLICAS.servers,
-                ["delete"] * len(self.REPLICAS.servers),
-            )
-            # accumulate return values
-            # check if all backups succeeded
-            if reduce(lambda x, y: x and y, ff):
-                return replica_pb2.FileObject(
+            # just add to queue
+            self.pending_requests.put((deepcopy(request), "delete"))
+
+            return replica_pb2.FileObject(
                     status="SUCCESS",
                     # version=version # not needed
                 )
-            else:
-                return replica_pb2.FileObject(
-                    status="FAILURE",
-                )
+            
         else:
             with grpc.insecure_channel(
                 self.PRIMARY_SERVER.ip + ":" + self.PRIMARY_SERVER.port
@@ -264,9 +244,9 @@ def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
 
     UUID_MAP = {}
     REPLICAS = registry_server_pb2.Server_book()
+    main_serve = Serve(logger, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS, _server_id)
     replica_pb2_grpc.add_ServeServicer_to_server(
-        Serve(logger, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS, _server_id),
-        server,
+        main_serve, server,
     )
 
     if IS_PRIMARY:
@@ -282,6 +262,22 @@ def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
 
     logger.info("Registry started, listening on all interfaces at port: " + port)
     logger.info("Press Ctrl+C to stop the server")
+
+    non_block_write_through = futures.ThreadPoolExecutor(max_workers=20)
+
+    while True:
+        # check if there are pending requests
+        request, operation = main_serve.pending_requests.get(block=True)
+        if operation == "write":
+            # send to all replicas
+            ff = non_block_write_through.map(SendToBackups, [request] * len(main_serve.REPLICAS.servers),main_serve.REPLICAS.servers, ["write"] * len(main_serve.REPLICAS.servers))
+            if reduce(lambda x, y: x and y, ff):
+                print("[PRIMERA], ALL BACKUPS RECEIVED")
+        elif operation == "delete":
+            # send to all replicas
+            ff = non_block_write_through.map(SendToBackups, [request] * len(main_serve.REPLICAS.servers), main_serve.REPLICAS.servers,["delete"] * len(main_serve.REPLICAS.servers))
+            if reduce(lambda x, y: x and y, ff):
+                print("[PRIMERA], ALL BACKUPS RECEIVED")
 
     server.wait_for_termination()
 
