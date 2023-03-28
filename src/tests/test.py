@@ -14,6 +14,7 @@ class PBBP(unittest.TestCase):
     n=20
     process_list = []
     client_list = []
+    client_files = [[]]
         
     def test01_launch_registry_server(self):
         from registry_server import serve
@@ -55,11 +56,26 @@ class PBBP(unittest.TestCase):
         file_uuid = str(uuid.uuid4())
         filename = "I am Walter Hartwell White"
         content = "I live in Albuquerque, New Mexico. I am 51 years old. I have a wife and two children. I am a high school chemistry teacher. I have terminal lung cancer. I am also a methamphetamine manufacturer. I am the one who knocks."
+
+        self.client_files[0].append((file_uuid, filename, content))
+
         resp = c1.write_to_replica(replica, file_uuid, filename, content)
         assert resp.status == "Success", "Write failed"
         assert resp.uuid == file_uuid, "UUID mismatch"
         assert len(resp.version)>0, "Version not set"
         # can at most print resp.version, nothing to assert
+    
+    def test05_run_client_read_all(self):
+        # using first client
+        c1 = self.client_list[0]
+        for replica in c1.KNOWN_SERVERS:
+            resp = c1.read_from_replica(replica, self.client_files[0][0][0])
+            assert resp.status == "Success", "Write failed"
+            assert resp.name == self.client_files[0][0][1]
+            assert resp.content == self.client_files[0][0][2]
+            assert len(resp.version)>0, f"Version not set on replica {replica}"
+
+
         
     
     def testzz_tear_down(self):

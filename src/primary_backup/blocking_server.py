@@ -80,7 +80,8 @@ class Serve(replica_pb2_grpc.ServeServicer):
             # add to map
             # Calculate version
             version = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-            self.UUID_MAP[request.uuid] = (request.name, version)
+            request.version = version
+            self.UUID_MAP[request.uuid] = (request.name, request.version)
             # send to backups using thread worker pool
 
             ff_tpool = futures.ThreadPoolExecutor(max_workers=20)
@@ -112,13 +113,24 @@ class Serve(replica_pb2_grpc.ServeServicer):
     def Read(self, request, context):
         # TODO: Handle the mentioned cases
         self.logger.info("READ REQUEST FROM %s", context.peer())
+        # get name from UUID_MAP
+        filename = self.UUID_MAP[request.uuid][0]
+
         # if file in fs
         try:
-            with open(request.name, "r") as f:
+            with open("replicas/" + str(self._server_id) + "/" + filename, "r") as f:
                 data = f.read()
-            return replica_pb2.File(data=data)
+            return replica_pb2.FileObject(
+                status = "Success",
+                name = filename,
+                version=self.UUID_MAP[request.uuid][1], 
+                content=data
+            )
         except FileNotFoundError:
-            return replica_pb2.File(data="")
+            return replica_pb2.FileObject(
+                status = "File not found",
+                uuid=request.uuid
+            )
 
     def Delete(self, request, context):
         return super().Delete(request, context)
