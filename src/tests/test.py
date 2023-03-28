@@ -65,7 +65,7 @@ class PBBP(unittest.TestCase):
         self.client_files[0].append((file_uuid, filename, content))
 
         resp = c1.write_to_replica(replica, file_uuid, filename, content)
-        assert resp.status == "Success", "Write failed"
+        assert resp.status == "SUCCESS", "Write failed"
         assert resp.uuid == file_uuid, "UUID mismatch"
         assert len(resp.version)>0, "Version not set"
         # can at most print resp.version, nothing to assert
@@ -77,7 +77,7 @@ class PBBP(unittest.TestCase):
             resp = c1.read_from_replica(replica, self.client_files[0][0][0])
             # pretty stupid to write on stdout, but ok
             # print(resp)
-            assert resp.status == "Success", "Write failed"
+            assert resp.status == "SUCCESS", "Write failed"
             assert resp.name.find(self.client_files[0][0][1])!=-1, f"Names don't match, Expected {self.client_files[0][0][1]} got {resp.name}"
             assert resp.content == self.client_files[0][0][2], f"content mismatch"
             assert len(resp.version)>0, f"Version not set on replica {replica}"
@@ -93,7 +93,7 @@ class PBBP(unittest.TestCase):
         self.client_files[0].append((file_uuid, filename, content))
 
         resp = c1.write_to_replica(replica, file_uuid, filename, content)
-        assert resp.status == "Success", "Write failed"
+        assert resp.status == "SUCCESS", "Write failed"
         assert resp.uuid == file_uuid, "UUID mismatch"
         assert len(resp.version)>0, "Version not set"
         # can at most print resp.version, nothing to assert        
@@ -105,7 +105,7 @@ class PBBP(unittest.TestCase):
             resp = c1.read_from_replica(replica, self.client_files[0][1][0])
             # pretty stupid to write on stdout, but ok
             # print(resp)
-            assert resp.status == "Success", "Write failed"
+            assert resp.status == "SUCCESS", "Write failed"
             assert resp.name.find(self.client_files[0][1][1])!=-1, "Name mismatch"
             assert resp.content == self.client_files[0][1][2], f"Content mismatch on replica {replica}, expected {self.client_files[0][1][2]} got {resp.content}"
             assert len(resp.version)>0, f"Version not set on replica {replica}"
@@ -116,10 +116,8 @@ class PBBP(unittest.TestCase):
         replica = random.choice(c1.KNOWN_SERVERS)
         resp = c1.delete_from_replica(replica, self.client_files[0][0][0])
         
-        assert resp.status == "Success", "Delete failed"
-        assert resp.uuid == self.client_files[0][0][0], "UUID mismatch"
-        assert len(resp.version)>0, "Version not set"
-        # can at most print resp.version, nothing to assert
+        assert resp.status == "SUCCESS", "Delete failed"
+        # only fail SUCESS, nothing else to assert
     
     def test09_run_client_read_deleted(self):
         # using first client
@@ -128,10 +126,8 @@ class PBBP(unittest.TestCase):
             resp = c1.read_from_replica(replica, self.client_files[0][0][0])
             # pretty stupid to write on stdout, but ok
             # print(resp)
-            assert resp.status == "Failure", "Read succeeded (this is bad)"
-            assert resp.name == "File not found"
-            assert resp.content == "File not found"
-            assert len(resp.version)>0, f"Version not set on replica {replica}"
+            assert resp.status == "FILE ALREADY DELETED", f"Read succeeded (this is bad), got {resp.status}"
+            # everything else is empty
 
 
     def testzz_tear_down(self):

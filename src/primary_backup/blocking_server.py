@@ -115,14 +115,14 @@ class Serve(replica_pb2_grpc.ServeServicer):
 
             if reduce(lambda x, y: x and y, ff):
                 return replica_pb2.FileObject(
-                    status = "Success",
+                    status = "SUCCESS",
                     uuid=request.uuid, 
                     version=version
                 )
             else:
                 # TODO: Yet to fully do
                 return replica_pb2.FileObject(   
-                    status = "Failure",
+                    status = "FAILURE",
                     uuid=request.uuid,
                 )
         else:
@@ -134,8 +134,15 @@ class Serve(replica_pb2_grpc.ServeServicer):
                 return resprim
 
     def Read(self, request, context):
-        # TODO: Handle the mentioned cases
         self.logger.info("READ REQUEST FROM %s", context.peer())
+
+        # scenario 1, uuid not in map
+        if request.uuid not in self.UUID_MAP:
+            return replica_pb2.FileObject(
+                status = "FILE DOES NOT EXIST"
+            )
+
+
         # get name from UUID_MAP
         filename = self.UUID_MAP[request.uuid][0]
 
@@ -143,15 +150,18 @@ class Serve(replica_pb2_grpc.ServeServicer):
         try:
             with open("replicas/" + str(self._server_id) + "/" + filename, "r") as f:
                 data = f.read()
+
+            # scenario 2, everything goes well
             return replica_pb2.FileObject(
-                status = "Success",
+                status = "SUCCESS",
                 name = filename,
                 version=self.UUID_MAP[request.uuid][1], 
                 content=data
             )
-        except FileNotFoundError:
+        except (FileNotFoundError, PermissionError) as e:
+            # scenario 3, file not in fs
             return replica_pb2.FileObject(
-                status = "File not found",
+                status = "FILE ALREADY DELETED",
                 uuid=request.uuid
             )
 
@@ -178,14 +188,12 @@ class Serve(replica_pb2_grpc.ServeServicer):
             # check if all backups succeeded
             if reduce(lambda x, y: x and y, ff):
                 return replica_pb2.FileObject(
-                    status = "Success",
-                    uuid=request.uuid, 
+                    status = "SUCCESS",
                     # version=version # not needed
                 )
             else:   
                 return replica_pb2.FileObject(
-                    status = "Failure",
-                    uuid=request.uuid,
+                    status = "FAILURE",
                 )
         else:
             with grpc.insecure_channel(
