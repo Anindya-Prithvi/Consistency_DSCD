@@ -1,4 +1,5 @@
 import shutil
+import time
 import unittest
 import multiprocessing
 import logging
@@ -79,13 +80,15 @@ class PBBP(unittest.TestCase):
 
         self.client_files[0].append((file_uuid, filename, content))
 
+        st = time.time()
         resp = c1.write_to_replica(replica, file_uuid, filename, content)
         assert resp.status == "SUCCESS", "Write failed"
         assert resp.uuid == file_uuid, "UUID mismatch"
         assert len(resp.version) > 0, "Version not set"
         # can at most print resp.version, nothing to assert
+        et = time.time()
 
-        print("Write acknoledgement has been received but all replicas may not have written, so sleep [10] ")
+        print(f"Write acknoledgement has been received within {et-st} but all replicas may not have written, so sleep [10] ")
         sleep(10)
 
     def test05_run_client_read_all(self):
@@ -111,14 +114,15 @@ class PBBP(unittest.TestCase):
         content = "...You go down just like Holy Mary, Mary on a, Mary on a cross Not just another bloody Mary, Mary on a, Mary on a cross. Your beauty never fai..."
 
         self.client_files[0].append((file_uuid, filename, content))
-
+        st = time.time()
         resp = c1.write_to_replica(replica, file_uuid, filename, content)
         assert resp.status == "SUCCESS", "Write failed"
         assert resp.uuid == file_uuid, "UUID mismatch"
         assert len(resp.version) > 0, "Version not set"
+        et = time.time()
         # can at most print resp.version, nothing to assert
 
-        print("Write acknoledgement has been received but all replicas may not have written, so sleep [10] ")
+        print(f"Write acknoledgement has been received within {et-st} but all replicas may not have written, so sleep [10] ")
         sleep(10)
 
     def test07_run_client_read_all(self):

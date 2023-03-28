@@ -1,4 +1,5 @@
 import shutil
+import time
 import unittest
 import multiprocessing
 import logging
@@ -79,11 +80,15 @@ class PBBP(unittest.TestCase):
 
         self.client_files[0].append((file_uuid, filename, content))
 
+        st = time.time()
         resp = c1.write_to_replica(replica, file_uuid, filename, content)
         assert resp.status == "SUCCESS", "Write failed"
         assert resp.uuid == file_uuid, "UUID mismatch"
         assert len(resp.version) > 0, "Version not set"
         # can at most print resp.version, nothing to assert
+        et = time.time()
+
+        print(f"Write acknoledgement has been received within {et-st}")
 
     def test05_run_client_read_all(self):
         # using first client
@@ -109,11 +114,14 @@ class PBBP(unittest.TestCase):
 
         self.client_files[0].append((file_uuid, filename, content))
 
+        st = time.time()
         resp = c1.write_to_replica(replica, file_uuid, filename, content)
         assert resp.status == "SUCCESS", "Write failed"
         assert resp.uuid == file_uuid, "UUID mismatch"
         assert len(resp.version) > 0, "Version not set"
+        et = time.time()
         # can at most print resp.version, nothing to assert
+        print(f"Write acknoledgement has been received within {et-st}")
 
     def test07_run_client_read_all(self):
         # using first client
