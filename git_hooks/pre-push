@@ -40,7 +40,7 @@ do
 			range="$remote_oid..$local_oid"
 		fi
 
-		cd src/tests && python -m unittest -v
+		cd src/primary_backup && python -m unittest -v
 		# get latest commit
 		status=$?
 

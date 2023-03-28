@@ -10,6 +10,9 @@ import uuid
 logger = logging.getLogger("test")
 logger.setLevel(logging.INFO)
 
+# running from project_dir/src/
+# so we need to add primary_blocking/blocking to sys.path
+sys.path.append("primary_backup/blocking")
 
 class PBBP(unittest.TestCase):
     n = 50
