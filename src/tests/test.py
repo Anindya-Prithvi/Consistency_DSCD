@@ -11,7 +11,7 @@ logger = logging.getLogger("test")
 logger.setLevel(logging.INFO)
 
 class PBBP(unittest.TestCase):
-    n=20
+    n=50
     process_list = []
     client_list = []
     client_files = [[]]
@@ -49,7 +49,7 @@ class PBBP(unittest.TestCase):
         self.client_list.append(c1)
         assert len(c1.KNOWN_SERVERS)==self.n, "All Servers not reg. or client fail"
     
-    def test04_run_client_write(self):
+    def test04_run_client_write_one(self):
         # using first client
         c1 = self.client_list[0]
         replica = random.choice(c1.KNOWN_SERVERS)
@@ -70,14 +70,66 @@ class PBBP(unittest.TestCase):
         c1 = self.client_list[0]
         for replica in c1.KNOWN_SERVERS:
             resp = c1.read_from_replica(replica, self.client_files[0][0][0])
+            # pretty stupid to write on stdout, but ok
+            print(resp)
             assert resp.status == "Success", "Write failed"
             assert resp.name == self.client_files[0][0][1]
             assert resp.content == self.client_files[0][0][2]
             assert len(resp.version)>0, f"Version not set on replica {replica}"
 
+    def test06_run_client_write_two(self):
+        # using first client
+        c1 = self.client_list[0]
+        replica = random.choice(c1.KNOWN_SERVERS)
+        file_uuid = str(uuid.uuid4())
+        filename = "Mary on Cross"
+        content = "...You go down just like Holy Mary, Mary on a, Mary on a cross Not just another bloody Mary, Mary on a, Mary on a cross. Your beauty never fai..."
 
-        
+        self.client_files[0].append((file_uuid, filename, content))
+
+        resp = c1.write_to_replica(replica, file_uuid, filename, content)
+        assert resp.status == "Success", "Write failed"
+        assert resp.uuid == file_uuid, "UUID mismatch"
+        assert len(resp.version)>0, "Version not set"
+        # can at most print resp.version, nothing to assert        
     
+    def test07_run_client_read_all(self):
+        # using first client
+        c1 = self.client_list[0]
+        for replica in c1.KNOWN_SERVERS:
+            resp = c1.read_from_replica(replica, self.client_files[0][1][0])
+            # pretty stupid to write on stdout, but ok
+            print(resp)
+            assert resp.status == "Success", "Write failed"
+            assert resp.name == self.client_files[0][1][1]
+            assert resp.content == self.client_files[0][1][2], f"Content mismatch on replica {replica}, expected {self.client_files[0][1][2]} got {resp.content}"
+            assert len(resp.version)>0, f"Version not set on replica {replica}"
+    
+    def test08_run_client_delete_one(self):
+        # using first client
+        c1 = self.client_list[0]
+        replica = random.choice(c1.KNOWN_SERVERS)
+        resp = c1.delete_from_replica(replica, self.client_files[0][0][0])
+        
+        print("REMOVE THIS PRINT", resp)
+        assert resp.status == "Success", "Delete failed"
+        assert resp.uuid == self.client_files[0][0][0], "UUID mismatch"
+        assert len(resp.version)>0, "Version not set"
+        # can at most print resp.version, nothing to assert
+    
+    def test09_run_client_read_deleted(self):
+        # using first client
+        c1 = self.client_list[0]
+        for replica in c1.KNOWN_SERVERS:
+            resp = c1.read_from_replica(replica, self.client_files[0][0][0])
+            # pretty stupid to write on stdout, but ok
+            print(resp)
+            assert resp.status == "Failure", "Read succeeded (this is bad)"
+            assert resp.name == "File not found"
+            assert resp.content == "File not found"
+            assert len(resp.version)>0, f"Version not set on replica {replica}"
+
+
     def testzz_tear_down(self):
         for p in self.process_list:
             p.terminate()

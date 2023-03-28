@@ -6,8 +6,10 @@ import grpc
 import argparse
 import registry_server_pb2, registry_server_pb2_grpc, replica_pb2, replica_pb2_grpc
 import os
-import time
+from time import sleep
 import datetime
+
+# TO SIMULATE REALTIME WRITE DELAYS IN BACKUPS (PER GC Comments), sleep is added
 
 class Primera(replica_pb2_grpc.PrimeraServicer):
     def __init__(self, logger, REPLICAS):
@@ -37,6 +39,12 @@ class Backup(replica_pb2_grpc.BackupServicer):
         fobj = os.open("replicas/" + str(self.server_id) + "/" + request.name, os.O_CREAT | os.O_WRONLY)
         os.write(fobj, request.content.encode())
         os.close(fobj)
+
+        # COMMENT BELOW FOR NO DELAY
+        import random
+        sleep(random.randint(0, 1_000_000)/1_000_000)
+
+
         # add to map
         self.UUID_MAP[request.uuid] = (request.name, request.version)
         return registry_server_pb2.Success(value=True)
