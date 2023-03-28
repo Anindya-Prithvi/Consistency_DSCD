@@ -56,29 +56,14 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
 
 def serve(logger, EXPOSE_IP, PORT):
     port = str(PORT)
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=50))
     registry_server_pb2_grpc.add_MaintainServicer_to_server(Maintain(logger), server)
     server.add_insecure_port(EXPOSE_IP + ":" + port)  # no TLS moment
     server.start()
 
     logger.info("Registry started, listening on all interfaces at port: " + port)
     logger.info("Press Ctrl+C to stop the server")
-
-    while True:
-        try:
-            _ = input()
-        except KeyboardInterrupt:
-            logger.info("Stopping server")
-            server.stop(0)
-            exit(0)
-        except EOFError:
-            # logger.warning("Server will now go headless (no input from stdin)")
-            server.wait_for_termination()
-            exit(0)
-        except:
-            logger.critical("Critical error, stopping server")
-            server.stop(None)
-            exit(1)
+    server.wait_for_termination()
 
 
 if __name__ == "__main__":

@@ -5,10 +5,19 @@ import argparse
 import registry_server_pb2, registry_server_pb2_grpc, replica_pb2, replica_pb2_grpc
 
 class Client:
-    def __init__(self, logger, REGISTRY_ADDR, OPTIONS):
+    def __init__(self, logger, REGISTRY_ADDR):
         self.logger = logger
         self.REGISTRY_ADDR = REGISTRY_ADDR
-        self.OPTIONS = OPTIONS
+        self.OPTIONS = """\
+Please choose from the following options:
+    1. Write
+    2. Read
+    3. Delete
+    ## utility options ##
+    4. Print known UUIDs
+    5. Print known servers
+    6. Exit
+"""
         response = self.client_get_replicas()
         self.KNOWN_SERVERS = response.servers # critical anyways, error handling not done
         self.UUID_STORE = set()
@@ -217,16 +226,6 @@ if __name__ == "__main__":
     logger.setLevel(logging.INFO)
     LOGFILE = None  # default
     REGISTRY_ADDR = "[::1]:1337"
-    OPTIONS = """\
-Please choose from the following options:
-    1. Write
-    2. Read
-    3. Delete
-    ## utility options ##
-    4. Print known UUIDs
-    5. Print known servers
-    6. Exit
-"""
     
     agr = argparse.ArgumentParser()
     agr.add_argument("--log", type=str, help="log file name", default=None)
@@ -242,4 +241,4 @@ Please choose from the following options:
     REGISTRY = args.addr
 
     logging.basicConfig(filename=LOGFILE, level=logging.INFO)
-    get_served(logger, REGISTRY_ADDR, OPTIONS)
+    get_served(logger, REGISTRY_ADDR)

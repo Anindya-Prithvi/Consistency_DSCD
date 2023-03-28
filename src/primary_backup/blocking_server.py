@@ -172,21 +172,7 @@ def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
     logger.info("Registry started, listening on all interfaces at port: " + port)
     logger.info("Press Ctrl+C to stop the server")
 
-    while True:
-        try:
-            _ = input()
-        except KeyboardInterrupt:
-            logger.info("Stopping server")
-            server.stop(0)
-            exit(0)
-        except EOFError:
-            # logger.warning("Server will now go headless (no input from stdin)")
-            server.wait_for_termination()
-            exit(0)
-        except:
-            logger.critical("Critical error, stopping server")
-            server.stop(None)
-            exit(1)
+    server.wait_for_termination()
 
 
 if __name__ == "__main__":
