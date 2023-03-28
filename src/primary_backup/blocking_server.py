@@ -42,7 +42,7 @@ class Backup(replica_pb2_grpc.BackupServicer):
 
         # COMMENT BELOW FOR NO DELAY
         import random
-        sleep(random.randint(0, 1_000_000)/1_000_000)
+        sleep(random.randint(0, 3_000_000)/1_000_000)
 
 
         # add to map
@@ -52,17 +52,23 @@ class Backup(replica_pb2_grpc.BackupServicer):
     def DeleteBackup(self, request, context):
         self.logger.info("DELETE FROM PRIMERA")
         # delete file
-        os.remove("replicas/" + str(self.server_id) + "/" + request.name)
+        # get name from UUID_MAP
+        name = self.UUID_MAP[request.uuid][0]
+
+        os.remove("replicas/" + str(self.server_id) + "/" + name)
         # deref in map, timestamp of deletion
-        self.UUID_MAP[request.uuid] = ("", "WHATEVER primera gave")
+        self.UUID_MAP[request.uuid] = ("", request.version)
         return registry_server_pb2.Success(value=True)
 
-def SendToBackups(request, known_replica):
+def SendToBackups(request, known_replica, request_type: str):
     with grpc.insecure_channel(
         known_replica.ip + ":" + known_replica.port
     ) as channel:
         stub = replica_pb2_grpc.BackupStub(channel)
-        response = stub.WriteBackup(request)
+        if request_type == "write":
+            response = stub.WriteBackup(request)
+        elif request_type == "delete":
+            response = stub.DeleteBackup(request)
         return response.value
 
 class Serve(replica_pb2_grpc.ServeServicer):
@@ -82,21 +88,26 @@ class Serve(replica_pb2_grpc.ServeServicer):
         # send to primary replica
         if self.IS_PRIMARY:
             # write to file
-            fobj = os.open("replicas/" + str(self._server_id) + "/" + request.name, os.O_CREAT | os.O_WRONLY)
+            fixfilename = request.name.replace("/", "_")
+            fixfilename = f"'{fixfilename}'"
+            fobj = os.open("replicas/" + str(self._server_id) + "/" + fixfilename, os.O_CREAT | os.O_WRONLY)
             os.write(fobj, request.content.encode())
             os.close(fobj)
             # add to map
             # Calculate version
             version = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             request.version = version
-            self.UUID_MAP[request.uuid] = (request.name, request.version)
+            self.UUID_MAP[request.uuid] = (fixfilename, request.version)
             # send to backups using thread worker pool
+
+            request.name = fixfilename
 
             ff_tpool = futures.ThreadPoolExecutor(max_workers=20)
             ff = ff_tpool.map(
                 SendToBackups,
                 [request] * len(self.REPLICAS.servers),
                 self.REPLICAS.servers,
+                ["write"] * len(self.REPLICAS.servers)
             )
 
             # accumulate return values
@@ -109,14 +120,18 @@ class Serve(replica_pb2_grpc.ServeServicer):
                     version=version
                 )
             else:
-                return registry_server_pb2.Success(value=False)
+                # TODO: Yet to fully do
+                return replica_pb2.FileObject(   
+                    status = "Failure",
+                    uuid=request.uuid,
+                )
         else:
             with grpc.insecure_channel(
                 self.PRIMARY_SERVER.ip + ":" + self.PRIMARY_SERVER.port
             ) as channel:
                 stub = replica_pb2_grpc.ServeStub(channel)
-                response = stub.Write(request)
-                return response
+                resprim = stub.Write(request)
+                return resprim
 
     def Read(self, request, context):
         # TODO: Handle the mentioned cases
@@ -141,7 +156,44 @@ class Serve(replica_pb2_grpc.ServeServicer):
             )
 
     def Delete(self, request, context):
-        return super().Delete(request, context)
+        # calculate deletion time if PRIMARY
+        if self.IS_PRIMARY:
+            # delete from primary
+            filename = self.UUID_MAP[request.uuid][0]
+            os.remove("replicas/" + str(self._server_id) + "/" + filename)
+
+            version = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            self.UUID_MAP[request.uuid] = ("", version)
+            request.version = version
+
+            # send to backups using thread worker pool
+            ff_tpool = futures.ThreadPoolExecutor(max_workers=20)
+            ff = ff_tpool.map(
+                SendToBackups,
+                [request] * len(self.REPLICAS.servers),
+                self.REPLICAS.servers,
+                ["delete"] * len(self.REPLICAS.servers)
+            )
+            # accumulate return values
+            # check if all backups succeeded
+            if reduce(lambda x, y: x and y, ff):
+                return replica_pb2.FileObject(
+                    status = "Success",
+                    uuid=request.uuid, 
+                    version=version
+                )
+            else:   
+                return replica_pb2.FileObject(
+                    status = "Failure",
+                    uuid=request.uuid,
+                )
+        else:
+            with grpc.insecure_channel(
+                self.PRIMARY_SERVER.ip + ":" + self.PRIMARY_SERVER.port
+            ) as channel:
+                stub = replica_pb2_grpc.ServeStub(channel)
+                resprim = stub.Delete(request)
+                return resprim
 
 
 def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):

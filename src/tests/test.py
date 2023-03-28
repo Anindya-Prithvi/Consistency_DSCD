@@ -1,3 +1,4 @@
+import shutil
 import unittest
 import multiprocessing
 import logging
@@ -23,6 +24,8 @@ class PBBP(unittest.TestCase):
         self.process_list.append(p)
         assert p.is_alive(), "Registry server not launched"
         # print return value of serve
+
+        print("Waiting for registry server to come up...[2seconds]")
         sleep(2)
 
     def test02_run_n_replicas(self):
@@ -41,13 +44,15 @@ class PBBP(unittest.TestCase):
             self.process_list.append(p)
         for p in processes:
             assert p.is_alive(), "Replica server not launched"
-        sleep(2)
+
+        print("Waiting for all replicas to come up...[5seconds]")
+        sleep(5)
 
     def test03_run_client(self):
         from client import Client
         c1 = Client(logger, "[::1]:1337")
         self.client_list.append(c1)
-        assert len(c1.KNOWN_SERVERS)==self.n, "All Servers not reg. or client fail"
+        assert len(c1.KNOWN_SERVERS)==self.n, f"All servers not up. Expected {self.n}, got {len(c1.KNOWN_SERVERS)}"
     
     def test04_run_client_write_one(self):
         # using first client
@@ -71,10 +76,10 @@ class PBBP(unittest.TestCase):
         for replica in c1.KNOWN_SERVERS:
             resp = c1.read_from_replica(replica, self.client_files[0][0][0])
             # pretty stupid to write on stdout, but ok
-            print(resp)
+            # print(resp)
             assert resp.status == "Success", "Write failed"
-            assert resp.name == self.client_files[0][0][1]
-            assert resp.content == self.client_files[0][0][2]
+            assert resp.name.find(self.client_files[0][0][1])!=-1, f"Names don't match, Expected {self.client_files[0][0][1]} got {resp.name}"
+            assert resp.content == self.client_files[0][0][2], f"content mismatch"
             assert len(resp.version)>0, f"Version not set on replica {replica}"
 
     def test06_run_client_write_two(self):
@@ -99,9 +104,9 @@ class PBBP(unittest.TestCase):
         for replica in c1.KNOWN_SERVERS:
             resp = c1.read_from_replica(replica, self.client_files[0][1][0])
             # pretty stupid to write on stdout, but ok
-            print(resp)
+            # print(resp)
             assert resp.status == "Success", "Write failed"
-            assert resp.name == self.client_files[0][1][1]
+            assert resp.name.find(self.client_files[0][1][1])!=-1, "Name mismatch"
             assert resp.content == self.client_files[0][1][2], f"Content mismatch on replica {replica}, expected {self.client_files[0][1][2]} got {resp.content}"
             assert len(resp.version)>0, f"Version not set on replica {replica}"
     
@@ -111,7 +116,6 @@ class PBBP(unittest.TestCase):
         replica = random.choice(c1.KNOWN_SERVERS)
         resp = c1.delete_from_replica(replica, self.client_files[0][0][0])
         
-        print("REMOVE THIS PRINT", resp)
         assert resp.status == "Success", "Delete failed"
         assert resp.uuid == self.client_files[0][0][0], "UUID mismatch"
         assert len(resp.version)>0, "Version not set"
@@ -123,7 +127,7 @@ class PBBP(unittest.TestCase):
         for replica in c1.KNOWN_SERVERS:
             resp = c1.read_from_replica(replica, self.client_files[0][0][0])
             # pretty stupid to write on stdout, but ok
-            print(resp)
+            # print(resp)
             assert resp.status == "Failure", "Read succeeded (this is bad)"
             assert resp.name == "File not found"
             assert resp.content == "File not found"
@@ -135,6 +139,10 @@ class PBBP(unittest.TestCase):
             p.terminate()
             p.kill()
         assert not any([p.is_alive() for p in self.process_list]), "Processes not terminated"
+
+        # also clean up replicas directory
+        shutil.rmtree("replicas")
+        # fin
 
 if __name__ == '__main__':
     unittest.main()
