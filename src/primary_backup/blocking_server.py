@@ -84,25 +84,24 @@ class Serve(replica_pb2_grpc.ServeServicer):
     
     def Write(self, request, context):
         self.logger.info("WRITE REQUEST FROM %s", context.peer())
+        # check uuid exists
+        uuid_exists = request.uuid in self.UUID_MAP
+        # Scenario 4
+        if uuid_exists and self.UUID_MAP[request.uuid][0] == "":
+            return replica_pb2.FileObject(
+                status = "DELETED FILE CANNOT BE UPDATED"
+            )
+        fixfilename = f"'{request.name}'"
+        # fixfilename = fixfilename.replace("/", "_") # sanitizer
+        # Scenario 2, check if file exists
+        if not uuid_exists and os.path.exists("replicas/" + str(self._server_id) + "/" + fixfilename):
+            return replica_pb2.FileObject(
+                status = "FILE WITH SAME NAME ALREADY EXISTS"
+            )
+        
         # send to primary replica
         if self.IS_PRIMARY:
-            # check uuid exists
-            uuid_exists = request.uuid in self.UUID_MAP
-            # Scenario 4
-            if uuid_exists and self.UUID_MAP[request.uuid][0] == "":
-                return replica_pb2.FileObject(
-                    status = "DELETED FILE CANNOT BE UPDATED"
-                )
             # write to file
-            
-            fixfilename = f"'{request.name}'"
-            # fixfilename = fixfilename.replace("/", "_") # sanitizer
-            # Scenario 2, check if file exists
-            if not uuid_exists and os.path.exists("replicas/" + str(self._server_id) + "/" + fixfilename):
-                return replica_pb2.FileObject(
-                    status = "FILE WITH SAME NAME ALREADY EXISTS"
-                )
-            
             fobj = os.open("replicas/" + str(self._server_id) + "/" + fixfilename, os.O_CREAT | os.O_WRONLY)
             os.write(fobj, request.content.encode())
             os.close(fobj)
@@ -134,10 +133,8 @@ class Serve(replica_pb2_grpc.ServeServicer):
                     version=version
                 )
             else:
-                # TODO: Yet to fully do
                 return replica_pb2.FileObject(   
                     status = "FAILURE",
-                    uuid=request.uuid,
                 )
         else:
             with grpc.insecure_channel(
@@ -181,9 +178,22 @@ class Serve(replica_pb2_grpc.ServeServicer):
 
     def Delete(self, request, context):
         # calculate deletion time if PRIMARY
+        # check if uuid exists, scenario 1
+        if request.uuid not in self.UUID_MAP:
+            return replica_pb2.FileObject(
+                status = "FILE DOES NOT EXIST"
+            )
+        # delete from primary
+        filename = self.UUID_MAP[request.uuid][0]
+
+        # check if file exists, in UUID_MAP, scenario 3
+        if filename == "":
+            return replica_pb2.FileObject(
+                status = "FILE ALREADY DELETED"
+            )
+            
         if self.IS_PRIMARY:
-            # delete from primary
-            filename = self.UUID_MAP[request.uuid][0]
+            # delete file, scenario 2
             os.remove("replicas/" + str(self._server_id) + "/" + filename)
 
             version = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
