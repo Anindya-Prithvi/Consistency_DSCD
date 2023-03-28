@@ -22,7 +22,7 @@ Please choose from the following options:
         self.KNOWN_SERVERS = response.servers # critical anyways, error handling not done
         self.UUID_STORE = set()
 
-    def send_to_replica(self, replica, file_uuid, filename, content):
+    def write_to_replica(self, replica, file_uuid, filename, content):
         with grpc.insecure_channel(f"{replica.ip}:{replica.port}") as channel:
             stub = replica_pb2_grpc.ServeStub(channel)
             response = stub.Write(
@@ -132,7 +132,7 @@ def get_served(logger, REGISTRY_ADDR, OPTIONS):
 
             # send to replica
             
-            response = client.send_to_replica(replica, file_uuid, filename, content)
+            response = client.write_to_replica(replica, file_uuid, filename, content)
             logger.info(f"Got response from replica {replica.ip}:{replica.port}")
             logger.info(f"Status: {response.status}")
             logger.info(f"UUID: {response.uuid}")

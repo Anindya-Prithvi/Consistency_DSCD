@@ -25,15 +25,16 @@ class Primera(replica_pb2_grpc.PrimeraServicer):
             return registry_server_pb2.Success(value=True)
 
 class Backup(replica_pb2_grpc.BackupServicer):
-    def __init__(self, logger, UUID_MAP):
+    def __init__(self, logger, UUID_MAP, server_id):
         self.logger = logger
         self.UUID_MAP = UUID_MAP
+        self.server_id = server_id
         super().__init__()
 
     def WriteBackup(self, request, context):
         self.logger.info("WRITE FROM PRIMERA")
         # write to file
-        fobj = os.open("replicas/" + str(_server_id) + "/" + request.name, os.O_CREAT | os.O_WRONLY)
+        fobj = os.open("replicas/" + str(self.server_id) + "/" + request.name, os.O_CREAT | os.O_WRONLY)
         os.write(fobj, request.content.encode())
         os.close(fobj)
         # add to map
@@ -43,7 +44,7 @@ class Backup(replica_pb2_grpc.BackupServicer):
     def DeleteBackup(self, request, context):
         self.logger.info("DELETE FROM PRIMERA")
         # delete file
-        os.remove("replicas/" + str(_server_id) + "/" + request.name)
+        os.remove("replicas/" + str(self.server_id) + "/" + request.name)
         # deref in map, timestamp of deletion
         self.UUID_MAP[request.uuid] = ("", "WHATEVER primera gave")
         return registry_server_pb2.Success(value=True)
@@ -58,12 +59,13 @@ def SendToBackups(request, known_replica):
 
 class Serve(replica_pb2_grpc.ServeServicer):
 
-    def __init__(self, logger, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS):
+    def __init__(self, logger, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS, _server_id):
         self.logger = logger
         self.IS_PRIMARY = IS_PRIMARY
         self.PRIMARY_SERVER = PRIMARY_SERVER
         self.UUID_MAP = UUID_MAP
         self.REPLICAS = REPLICAS
+        self._server_id = _server_id
         super().__init__()    
     
     def Write(self, request, context):
@@ -72,7 +74,7 @@ class Serve(replica_pb2_grpc.ServeServicer):
         # send to primary replica
         if self.IS_PRIMARY:
             # write to file
-            fobj = os.open("replicas/" + str(_server_id) + "/" + request.name, os.O_CREAT | os.O_WRONLY)
+            fobj = os.open("replicas/" + str(self._server_id) + "/" + request.name, os.O_CREAT | os.O_WRONLY)
             os.write(fobj, request.content.encode())
             os.close(fobj)
             # add to map
@@ -160,12 +162,12 @@ def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
 
     UUID_MAP = {}
     REPLICAS = registry_server_pb2.Server_book()
-    replica_pb2_grpc.add_ServeServicer_to_server(Serve(logger,IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS), server)
+    replica_pb2_grpc.add_ServeServicer_to_server(Serve(logger,IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS, _server_id), server)
 
     if IS_PRIMARY:
         replica_pb2_grpc.add_PrimeraServicer_to_server(Primera(logger,REPLICAS), server)
     else:
-        replica_pb2_grpc.add_BackupServicer_to_server(Backup(logger,UUID_MAP), server)
+        replica_pb2_grpc.add_BackupServicer_to_server(Backup(logger,UUID_MAP, _server_id), server)
     server.add_insecure_port(EXPOSE_IP + ":" + port)  # no TLS moment
     server.start()
 
