@@ -216,7 +216,7 @@ if __name__ == "__main__":
 
     args = agr.parse_args()
     LOGFILE = args.log
-    REGISTRY = args.addr
+    REGISTRY = args.raddr
     PORT = args.port
     EXPOSE_IP = args.ip
 
