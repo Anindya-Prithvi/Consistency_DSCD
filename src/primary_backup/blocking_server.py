@@ -83,16 +83,30 @@ class Serve(replica_pb2_grpc.ServeServicer):
         super().__init__()    
     
     def Write(self, request, context):
-        # TODO: Handle mentioned cases
         self.logger.info("WRITE REQUEST FROM %s", context.peer())
         # send to primary replica
         if self.IS_PRIMARY:
+            # check uuid exists
+            uuid_exists = request.uuid in self.UUID_MAP
+            # Scenario 4
+            if uuid_exists and self.UUID_MAP[request.uuid][0] == "":
+                return replica_pb2.FileObject(
+                    status = "DELETED FILE CANNOT BE UPDATED"
+                )
             # write to file
-            fixfilename = request.name.replace("/", "_")
-            fixfilename = f"'{fixfilename}'"
+            
+            fixfilename = f"'{request.name}'"
+            # fixfilename = fixfilename.replace("/", "_") # sanitizer
+            # Scenario 2, check if file exists
+            if not uuid_exists and os.path.exists("replicas/" + str(self._server_id) + "/" + fixfilename):
+                return replica_pb2.FileObject(
+                    status = "FILE WITH SAME NAME ALREADY EXISTS"
+                )
+            
             fobj = os.open("replicas/" + str(self._server_id) + "/" + fixfilename, os.O_CREAT | os.O_WRONLY)
             os.write(fobj, request.content.encode())
             os.close(fobj)
+            # best case, scenario and also update (1,3)
             # add to map
             # Calculate version
             version = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
