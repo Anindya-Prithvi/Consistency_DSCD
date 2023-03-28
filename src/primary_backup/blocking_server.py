@@ -180,7 +180,7 @@ class Serve(replica_pb2_grpc.ServeServicer):
                 return replica_pb2.FileObject(
                     status = "Success",
                     uuid=request.uuid, 
-                    version=version
+                    # version=version # not needed
                 )
             else:   
                 return replica_pb2.FileObject(
