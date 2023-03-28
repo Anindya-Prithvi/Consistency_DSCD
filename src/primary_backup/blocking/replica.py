@@ -294,8 +294,6 @@ if __name__ == "__main__":
     REGISTRY_ADDR = "[::1]:1337"
     EXPOSE_IP = "[::1]"
     PORT = None
-
-    # TODO: Handle edge cases in read/write/delete, only basics done
     # get sys args
 
     agr = argparse.ArgumentParser()

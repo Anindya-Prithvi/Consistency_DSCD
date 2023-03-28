@@ -291,7 +291,6 @@ if __name__ == "__main__":
     EXPOSE_IP = "[::1]"
     PORT = None
 
-    # TODO: Handle edge cases in read/write/delete, only basics done
     # get sys args
 
     agr = argparse.ArgumentParser()
