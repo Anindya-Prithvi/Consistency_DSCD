@@ -7,7 +7,6 @@ import sys
 from time import sleep
 import uuid
 
-sys.path.append("../primary_backup")
 logger = logging.getLogger("test")
 logger.setLevel(logging.INFO)
 
@@ -31,7 +30,7 @@ class PBBP(unittest.TestCase):
         sleep(2)
 
     def test02_run_n_replicas(self):
-        from blocking_server import serve
+        from replica import serve
 
         processes = []
         # try:
