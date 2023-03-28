@@ -18,7 +18,7 @@ import os
 import time
 import datetime
 
-#TODO: Handle edge cases in read/write/delete, only basics done
+# TODO: Handle edge cases in read/write/delete, only basics done
 
 _server_id = str(uuid.uuid4())[:6]  # private
 logger = logging.getLogger(f"server-{_server_id}")
@@ -30,7 +30,7 @@ PORT = None
 PRIMARY_SERVER = None  # no one is primary
 IS_PRIMARY = False
 REPLICAS = registry_server_pb2.Server_book()
-UUID_MAP = dict() # key, value = uuid, (name, version)
+UUID_MAP = dict()  # key, value = uuid, (name, version)
 
 # make directory for replicas files
 if not os.path.exists("replicas"):
@@ -51,11 +51,14 @@ class Primera(replica_pb2_grpc.PrimeraServicer):
             REPLICAS.servers.add(ip=request.ip, port=request.port)
             return registry_server_pb2.Success(value=True)
 
+
 class Backup(replica_pb2_grpc.BackupServicer):
     def WriteBackup(self, request, context):
         logger.info("WRITE FROM PRIMERA")
         # write to file
-        fobj = os.open("replicas/" + str(_server_id) + "/" + request.name, os.O_CREAT | os.O_WRONLY)
+        fobj = os.open(
+            "replicas/" + str(_server_id) + "/" + request.name, os.O_CREAT | os.O_WRONLY
+        )
         os.write(fobj, request.content.encode())
         os.close(fobj)
         # add to map
@@ -70,13 +73,13 @@ class Backup(replica_pb2_grpc.BackupServicer):
         UUID_MAP[request.uuid] = ("", "WHATEVER primera gave")
         return registry_server_pb2.Success(value=True)
 
+
 def SendToBackups(request, known_replica):
-    with grpc.insecure_channel(
-        known_replica.ip + ":" + known_replica.port
-    ) as channel:
+    with grpc.insecure_channel(known_replica.ip + ":" + known_replica.port) as channel:
         stub = replica_pb2_grpc.BackupStub(channel)
         response = stub.WriteBackup(request)
         return response.value
+
 
 class Serve(replica_pb2_grpc.ServeServicer):
     def Write(self, request, context):
@@ -85,7 +88,10 @@ class Serve(replica_pb2_grpc.ServeServicer):
         # send to primary replica
         if IS_PRIMARY:
             # write to file
-            fobj = os.open("replicas/" + str(_server_id) + "/" + request.name, os.O_CREAT | os.O_WRONLY)
+            fobj = os.open(
+                "replicas/" + str(_server_id) + "/" + request.name,
+                os.O_CREAT | os.O_WRONLY,
+            )
             os.write(fobj, request.content.encode())
             os.close(fobj)
             # add to map
@@ -106,9 +112,7 @@ class Serve(replica_pb2_grpc.ServeServicer):
 
             if reduce(lambda x, y: x and y, ff):
                 return replica_pb2.FileObject(
-                    status = "Success",
-                    uuid=request.uuid, 
-                    version=version
+                    status="Success", uuid=request.uuid, version=version
                 )
             else:
                 return registry_server_pb2.Success(value=False)

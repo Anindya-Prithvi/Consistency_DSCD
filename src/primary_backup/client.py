@@ -4,6 +4,7 @@ import grpc
 import argparse
 import registry_server_pb2, registry_server_pb2_grpc, replica_pb2, replica_pb2_grpc
 
+
 class Client:
     def __init__(self, logger, REGISTRY_ADDR):
         self.logger = logger
@@ -19,7 +20,9 @@ Please choose from the following options:
     6. Exit
 """
         response = self.client_get_replicas()
-        self.KNOWN_SERVERS = response.servers # critical anyways, error handling not done
+        self.KNOWN_SERVERS = (
+            response.servers
+        )  # critical anyways, error handling not done
         self.UUID_STORE = set()
 
     def write_to_replica(self, replica, file_uuid, filename, content):
@@ -33,7 +36,7 @@ Please choose from the following options:
                 )
             )
             return response
-    
+
     def read_from_replica(self, replica, file_uuid):
         with grpc.insecure_channel(f"{replica.ip}:{replica.port}") as channel:
             stub = replica_pb2_grpc.ServeStub(channel)
@@ -43,7 +46,7 @@ Please choose from the following options:
                 )
             )
             return response
-    
+
     def client_get_replicas(self):
         with grpc.insecure_channel(self.REGISTRY_ADDR) as channel:
             stub = registry_server_pb2_grpc.MaintainStub(channel)
@@ -59,16 +62,17 @@ Please choose from the following options:
                 )
             )
             return response
-    
+
     def pretty_print_servers(self):
         for i, server in enumerate(self.KNOWN_SERVERS):
             print(f"{i+1}. {server.ip}:{server.port}")
-    
+
     def print_options(self):
         print(self.OPTIONS)
-    
+
     def print_UUID_STORE(self):
         print(self.UUID_STORE)
+
 
 def get_served(logger, REGISTRY_ADDR, OPTIONS):
     # fetch replicas from registry server
@@ -94,18 +98,18 @@ def get_served(logger, REGISTRY_ADDR, OPTIONS):
         if choice == 1:
             # write
 
-            #choose a replica
+            # choose a replica
             logger.info("Choose which replica to write to /^[0-9]+$/:")
             client.pretty_print_servers()
             try:
                 replica = int(input())
                 if replica > len(client.KNOWN_SERVERS) or replica < 1:
                     raise ValueError
-                replica = client.KNOWN_SERVERS[replica-1]
+                replica = client.KNOWN_SERVERS[replica - 1]
             except ValueError:
                 logger.error("Invalid choice")
                 continue
-            
+
             # get a uuid
             logger.info("Enter UUID (Empty to generate new)")
             file_uuid = input().strip()
@@ -121,7 +125,7 @@ def get_served(logger, REGISTRY_ADDR, OPTIONS):
             except ValueError:
                 logger.error("Invalid UUID")
                 continue
-            
+
             # get filename
             logger.info("Enter filename")
             filename = input()
@@ -131,14 +135,13 @@ def get_served(logger, REGISTRY_ADDR, OPTIONS):
             content = input()
 
             # send to replica
-            
+
             response = client.write_to_replica(replica, file_uuid, filename, content)
             logger.info(f"Got response from replica {replica.ip}:{replica.port}")
             logger.info(f"Status: {response.status}")
             logger.info(f"UUID: {response.uuid}")
             logger.info(f"Version: {response.version}")
 
-            
         elif choice == 2:
             # read
             logger.info("Enter UUID (Required)")
@@ -158,23 +161,23 @@ def get_served(logger, REGISTRY_ADDR, OPTIONS):
                 replica = int(input())
                 if replica > len(client.KNOWN_SERVERS) or replica < 1:
                     raise ValueError
-                replica = client.KNOWN_SERVERS[replica-1]
+                replica = client.KNOWN_SERVERS[replica - 1]
             except ValueError:
                 logger.error("Invalid choice")
                 continue
 
             # send to replica
-            
+
             response = client.read_from_replica(replica, file_uuid)
             logger.info(f"Got response from replica {replica.ip}:{replica.port}")
             logger.info(f"Status: {response.status}")
             logger.info(f"Name: {response.name}")
             logger.info(f"Content: {response.content}")
             logger.info(f"Version: {response.version}")
-            
+
         elif choice == 3:
             # delete
-            
+
             # choose a replica
             logger.info("Choose which replica to delete from /^[0-9]+$/:")
             client.pretty_print_servers()
@@ -182,7 +185,7 @@ def get_served(logger, REGISTRY_ADDR, OPTIONS):
                 replica = int(input())
                 if replica > len(client.KNOWN_SERVERS) or replica < 1:
                     raise ValueError
-                replica = client.KNOWN_SERVERS[replica-1]
+                replica = client.KNOWN_SERVERS[replica - 1]
             except ValueError:
                 logger.error("Invalid choice")
                 continue
@@ -190,7 +193,7 @@ def get_served(logger, REGISTRY_ADDR, OPTIONS):
             # get a uuid
             logger.info("Enter UUID (Required)")
             file_uuid = input().strip()
-            
+
             # validate uuid
             try:
                 uuid.UUID(file_uuid)
@@ -226,7 +229,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.INFO)
     LOGFILE = None  # default
     REGISTRY_ADDR = "[::1]:1337"
-    
+
     agr = argparse.ArgumentParser()
     agr.add_argument("--log", type=str, help="log file name", default=None)
     agr.add_argument(

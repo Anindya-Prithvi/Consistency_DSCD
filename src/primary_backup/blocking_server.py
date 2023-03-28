@@ -11,6 +11,7 @@ import datetime
 
 # TO SIMULATE REALTIME WRITE DELAYS IN BACKUPS (PER GC Comments), sleep is added
 
+
 class Primera(replica_pb2_grpc.PrimeraServicer):
     def __init__(self, logger, REPLICAS):
         self.logger = logger
@@ -20,11 +21,14 @@ class Primera(replica_pb2_grpc.PrimeraServicer):
     def RecvReplica(self, request, context):
         self.logger.info("RECEIVED NEW REGISTERED SERVER")
         # check if already in self.REPLICAS.servers
-        if any(i.ip == request.ip and i.port == request.port for i in self.REPLICAS.servers):
+        if any(
+            i.ip == request.ip and i.port == request.port for i in self.REPLICAS.servers
+        ):
             return registry_server_pb2.Success(value=False)
         else:
             self.REPLICAS.servers.add(ip=request.ip, port=request.port)
             return registry_server_pb2.Success(value=True)
+
 
 class Backup(replica_pb2_grpc.BackupServicer):
     def __init__(self, logger, UUID_MAP, server_id):
@@ -36,14 +40,17 @@ class Backup(replica_pb2_grpc.BackupServicer):
     def WriteBackup(self, request, context):
         self.logger.info("WRITE FROM PRIMERA")
         # write to file
-        fobj = os.open("replicas/" + str(self.server_id) + "/" + request.name, os.O_CREAT | os.O_WRONLY)
+        fobj = os.open(
+            "replicas/" + str(self.server_id) + "/" + request.name,
+            os.O_CREAT | os.O_WRONLY,
+        )
         os.write(fobj, request.content.encode())
         os.close(fobj)
 
         # COMMENT BELOW FOR NO DELAY
         import random
-        sleep(random.randint(0, 3_000_000)/1_000_000)
 
+        sleep(random.randint(0, 3_000_000) / 1_000_000)
 
         # add to map
         self.UUID_MAP[request.uuid] = (request.name, request.version)
@@ -60,10 +67,9 @@ class Backup(replica_pb2_grpc.BackupServicer):
         self.UUID_MAP[request.uuid] = ("", request.version)
         return registry_server_pb2.Success(value=True)
 
+
 def SendToBackups(request, known_replica, request_type: str):
-    with grpc.insecure_channel(
-        known_replica.ip + ":" + known_replica.port
-    ) as channel:
+    with grpc.insecure_channel(known_replica.ip + ":" + known_replica.port) as channel:
         stub = replica_pb2_grpc.BackupStub(channel)
         if request_type == "write":
             response = stub.WriteBackup(request)
@@ -71,38 +77,41 @@ def SendToBackups(request, known_replica, request_type: str):
             response = stub.DeleteBackup(request)
         return response.value
 
-class Serve(replica_pb2_grpc.ServeServicer):
 
-    def __init__(self, logger, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS, _server_id):
+class Serve(replica_pb2_grpc.ServeServicer):
+    def __init__(
+        self, logger, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS, _server_id
+    ):
         self.logger = logger
         self.IS_PRIMARY = IS_PRIMARY
         self.PRIMARY_SERVER = PRIMARY_SERVER
         self.UUID_MAP = UUID_MAP
         self.REPLICAS = REPLICAS
         self._server_id = _server_id
-        super().__init__()    
-    
+        super().__init__()
+
     def Write(self, request, context):
         self.logger.info("WRITE REQUEST FROM %s", context.peer())
         # check uuid exists
         uuid_exists = request.uuid in self.UUID_MAP
         # Scenario 4
         if uuid_exists and self.UUID_MAP[request.uuid][0] == "":
-            return replica_pb2.FileObject(
-                status = "DELETED FILE CANNOT BE UPDATED"
-            )
+            return replica_pb2.FileObject(status="DELETED FILE CANNOT BE UPDATED")
         fixfilename = f"'{request.name}'"
         # fixfilename = fixfilename.replace("/", "_") # sanitizer
         # Scenario 2, check if file exists
-        if not uuid_exists and os.path.exists("replicas/" + str(self._server_id) + "/" + fixfilename):
-            return replica_pb2.FileObject(
-                status = "FILE WITH SAME NAME ALREADY EXISTS"
-            )
-        
+        if not uuid_exists and os.path.exists(
+            "replicas/" + str(self._server_id) + "/" + fixfilename
+        ):
+            return replica_pb2.FileObject(status="FILE WITH SAME NAME ALREADY EXISTS")
+
         # send to primary replica
         if self.IS_PRIMARY:
             # write to file
-            fobj = os.open("replicas/" + str(self._server_id) + "/" + fixfilename, os.O_CREAT | os.O_WRONLY)
+            fobj = os.open(
+                "replicas/" + str(self._server_id) + "/" + fixfilename,
+                os.O_CREAT | os.O_WRONLY,
+            )
             os.write(fobj, request.content.encode())
             os.close(fobj)
             # best case, scenario and also update (1,3)
@@ -120,7 +129,7 @@ class Serve(replica_pb2_grpc.ServeServicer):
                 SendToBackups,
                 [request] * len(self.REPLICAS.servers),
                 self.REPLICAS.servers,
-                ["write"] * len(self.REPLICAS.servers)
+                ["write"] * len(self.REPLICAS.servers),
             )
 
             # accumulate return values
@@ -128,13 +137,11 @@ class Serve(replica_pb2_grpc.ServeServicer):
 
             if reduce(lambda x, y: x and y, ff):
                 return replica_pb2.FileObject(
-                    status = "SUCCESS",
-                    uuid=request.uuid, 
-                    version=version
+                    status="SUCCESS", uuid=request.uuid, version=version
                 )
             else:
-                return replica_pb2.FileObject(   
-                    status = "FAILURE",
+                return replica_pb2.FileObject(
+                    status="FAILURE",
                 )
         else:
             with grpc.insecure_channel(
@@ -149,10 +156,7 @@ class Serve(replica_pb2_grpc.ServeServicer):
 
         # scenario 1, uuid not in map
         if request.uuid not in self.UUID_MAP:
-            return replica_pb2.FileObject(
-                status = "FILE DOES NOT EXIST"
-            )
-
+            return replica_pb2.FileObject(status="FILE DOES NOT EXIST")
 
         # get name from UUID_MAP
         filename = self.UUID_MAP[request.uuid][0]
@@ -164,34 +168,29 @@ class Serve(replica_pb2_grpc.ServeServicer):
 
             # scenario 2, everything goes well
             return replica_pb2.FileObject(
-                status = "SUCCESS",
-                name = filename,
-                version=self.UUID_MAP[request.uuid][1], 
-                content=data
+                status="SUCCESS",
+                name=filename,
+                version=self.UUID_MAP[request.uuid][1],
+                content=data,
             )
         except (FileNotFoundError, PermissionError) as e:
             # scenario 3, file not in fs
             return replica_pb2.FileObject(
-                status = "FILE ALREADY DELETED",
-                uuid=request.uuid
+                status="FILE ALREADY DELETED", uuid=request.uuid
             )
 
     def Delete(self, request, context):
         # calculate deletion time if PRIMARY
         # check if uuid exists, scenario 1
         if request.uuid not in self.UUID_MAP:
-            return replica_pb2.FileObject(
-                status = "FILE DOES NOT EXIST"
-            )
+            return replica_pb2.FileObject(status="FILE DOES NOT EXIST")
         # delete from primary
         filename = self.UUID_MAP[request.uuid][0]
 
         # check if file exists, in UUID_MAP, scenario 3
         if filename == "":
-            return replica_pb2.FileObject(
-                status = "FILE ALREADY DELETED"
-            )
-            
+            return replica_pb2.FileObject(status="FILE ALREADY DELETED")
+
         if self.IS_PRIMARY:
             # delete file, scenario 2
             os.remove("replicas/" + str(self._server_id) + "/" + filename)
@@ -206,18 +205,18 @@ class Serve(replica_pb2_grpc.ServeServicer):
                 SendToBackups,
                 [request] * len(self.REPLICAS.servers),
                 self.REPLICAS.servers,
-                ["delete"] * len(self.REPLICAS.servers)
+                ["delete"] * len(self.REPLICAS.servers),
             )
             # accumulate return values
             # check if all backups succeeded
             if reduce(lambda x, y: x and y, ff):
                 return replica_pb2.FileObject(
-                    status = "SUCCESS",
+                    status="SUCCESS",
                     # version=version # not needed
                 )
-            else:   
+            else:
                 return replica_pb2.FileObject(
-                    status = "FAILURE",
+                    status="FAILURE",
                 )
         else:
             with grpc.insecure_channel(
@@ -248,13 +247,12 @@ def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
         )
         if response:
             logger.info("Successfully registered with registry")
-            
+
             PRIMARY_SERVER = registry_server_pb2.Server_information(
                 ip=response.ip, port=response.port
             )
 
             if response.ip == EXPOSE_IP and response.port == port:
-                
                 IS_PRIMARY = True
                 logger.info("This is the primary replica")
                 # Launch primary replica receive service
@@ -266,12 +264,19 @@ def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
 
     UUID_MAP = {}
     REPLICAS = registry_server_pb2.Server_book()
-    replica_pb2_grpc.add_ServeServicer_to_server(Serve(logger,IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS, _server_id), server)
+    replica_pb2_grpc.add_ServeServicer_to_server(
+        Serve(logger, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS, _server_id),
+        server,
+    )
 
     if IS_PRIMARY:
-        replica_pb2_grpc.add_PrimeraServicer_to_server(Primera(logger,REPLICAS), server)
+        replica_pb2_grpc.add_PrimeraServicer_to_server(
+            Primera(logger, REPLICAS), server
+        )
     else:
-        replica_pb2_grpc.add_BackupServicer_to_server(Backup(logger,UUID_MAP, _server_id), server)
+        replica_pb2_grpc.add_BackupServicer_to_server(
+            Backup(logger, UUID_MAP, _server_id), server
+        )
     server.add_insecure_port(EXPOSE_IP + ":" + port)  # no TLS moment
     server.start()
 
@@ -289,8 +294,8 @@ if __name__ == "__main__":
     REGISTRY_ADDR = "[::1]:1337"
     EXPOSE_IP = "[::1]"
     PORT = None
-    
-    #TODO: Handle edge cases in read/write/delete, only basics done
+
+    # TODO: Handle edge cases in read/write/delete, only basics done
     # get sys args
 
     agr = argparse.ArgumentParser()

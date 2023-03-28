@@ -4,6 +4,7 @@ import grpc
 import argparse
 import registry_server_pb2, registry_server_pb2_grpc, replica_pb2, replica_pb2_grpc
 
+
 class Maintain(registry_server_pb2_grpc.MaintainServicer):
     primary_replica = None
     registered = registry_server_pb2.Server_book()
@@ -19,7 +20,10 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
         )
 
         # check if server is already registered
-        if any(i.ip == request.ip and i.port == request.port for i in self.registered.servers):
+        if any(
+            i.ip == request.ip and i.port == request.port
+            for i in self.registered.servers
+        ):
             self.logger.warning("Server already registered")
             return registry_server_pb2.Server_information(
                 ip=self.primary_replica.ip, port=self.primary_replica.port
@@ -27,7 +31,6 @@ class Maintain(registry_server_pb2_grpc.MaintainServicer):
 
         self.registered.servers.add(ip=request.ip, port=request.port)
 
-        
         if self.primary_replica is None:
             self.primary_replica = registry_server_pb2.Server_information(
                 ip=request.ip, port=request.port
@@ -72,7 +75,6 @@ if __name__ == "__main__":
     EXPOSE_IP = "[::]"
     PORT = 1337  # default
     LOGFILE = None  # default
-    
 
     # get sys args
     agr = argparse.ArgumentParser()

@@ -11,14 +11,16 @@ sys.path.append("../primary_backup")
 logger = logging.getLogger("test")
 logger.setLevel(logging.INFO)
 
+
 class PBBP(unittest.TestCase):
-    n=50
+    n = 50
     process_list = []
     client_list = []
     client_files = [[]]
-        
+
     def test01_launch_registry_server(self):
         from registry_server import serve
+
         p = multiprocessing.Process(target=serve, args=(logger, "[::1]", 1337))
         p.start()
         self.process_list.append(p)
@@ -30,6 +32,7 @@ class PBBP(unittest.TestCase):
 
     def test02_run_n_replicas(self):
         from blocking_server import serve
+
         processes = []
         # try:
         #     self.n = int(input("How many replicas do you want to launch? "))
@@ -38,7 +41,12 @@ class PBBP(unittest.TestCase):
         #     self.n = 20
 
         for i in range(self.n):
-            processes.append(multiprocessing.Process(target=serve, args=(logger, "[::1]:1337", f"test{i}er", "[::1]", 12000+i)))
+            processes.append(
+                multiprocessing.Process(
+                    target=serve,
+                    args=(logger, "[::1]:1337", f"test{i}er", "[::1]", 12000 + i),
+                )
+            )
         for p in processes:
             p.start()
             self.process_list.append(p)
@@ -50,10 +58,13 @@ class PBBP(unittest.TestCase):
 
     def test03_run_client(self):
         from client import Client
+
         c1 = Client(logger, "[::1]:1337")
         self.client_list.append(c1)
-        assert len(c1.KNOWN_SERVERS)==self.n, f"All servers not up. Expected {self.n}, got {len(c1.KNOWN_SERVERS)}"
-    
+        assert (
+            len(c1.KNOWN_SERVERS) == self.n
+        ), f"All servers not up. Expected {self.n}, got {len(c1.KNOWN_SERVERS)}"
+
     def test04_run_client_write_one(self):
         # using first client
         c1 = self.client_list[0]
@@ -67,9 +78,9 @@ class PBBP(unittest.TestCase):
         resp = c1.write_to_replica(replica, file_uuid, filename, content)
         assert resp.status == "SUCCESS", "Write failed"
         assert resp.uuid == file_uuid, "UUID mismatch"
-        assert len(resp.version)>0, "Version not set"
+        assert len(resp.version) > 0, "Version not set"
         # can at most print resp.version, nothing to assert
-    
+
     def test05_run_client_read_all(self):
         # using first client
         c1 = self.client_list[0]
@@ -78,9 +89,11 @@ class PBBP(unittest.TestCase):
             # pretty stupid to write on stdout, but ok
             # print(resp)
             assert resp.status == "SUCCESS", "Write failed"
-            assert resp.name.find(self.client_files[0][0][1])!=-1, f"Names don't match, Expected {self.client_files[0][0][1]} got {resp.name}"
+            assert (
+                resp.name.find(self.client_files[0][0][1]) != -1
+            ), f"Names don't match, Expected {self.client_files[0][0][1]} got {resp.name}"
             assert resp.content == self.client_files[0][0][2], f"content mismatch"
-            assert len(resp.version)>0, f"Version not set on replica {replica}"
+            assert len(resp.version) > 0, f"Version not set on replica {replica}"
 
     def test06_run_client_write_two(self):
         # using first client
@@ -95,9 +108,9 @@ class PBBP(unittest.TestCase):
         resp = c1.write_to_replica(replica, file_uuid, filename, content)
         assert resp.status == "SUCCESS", "Write failed"
         assert resp.uuid == file_uuid, "UUID mismatch"
-        assert len(resp.version)>0, "Version not set"
-        # can at most print resp.version, nothing to assert        
-    
+        assert len(resp.version) > 0, "Version not set"
+        # can at most print resp.version, nothing to assert
+
     def test07_run_client_read_all(self):
         # using first client
         c1 = self.client_list[0]
@@ -106,19 +119,21 @@ class PBBP(unittest.TestCase):
             # pretty stupid to write on stdout, but ok
             # print(resp)
             assert resp.status == "SUCCESS", "Write failed"
-            assert resp.name.find(self.client_files[0][1][1])!=-1, "Name mismatch"
-            assert resp.content == self.client_files[0][1][2], f"Content mismatch on replica {replica}, expected {self.client_files[0][1][2]} got {resp.content}"
-            assert len(resp.version)>0, f"Version not set on replica {replica}"
-    
+            assert resp.name.find(self.client_files[0][1][1]) != -1, "Name mismatch"
+            assert (
+                resp.content == self.client_files[0][1][2]
+            ), f"Content mismatch on replica {replica}, expected {self.client_files[0][1][2]} got {resp.content}"
+            assert len(resp.version) > 0, f"Version not set on replica {replica}"
+
     def test08_run_client_delete_one(self):
         # using first client
         c1 = self.client_list[0]
         replica = random.choice(c1.KNOWN_SERVERS)
         resp = c1.delete_from_replica(replica, self.client_files[0][0][0])
-        
+
         assert resp.status == "SUCCESS", "Delete failed"
         # only fail SUCESS, nothing else to assert
-    
+
     def test09_run_client_read_deleted(self):
         # using first client
         c1 = self.client_list[0]
@@ -126,19 +141,23 @@ class PBBP(unittest.TestCase):
             resp = c1.read_from_replica(replica, self.client_files[0][0][0])
             # pretty stupid to write on stdout, but ok
             # print(resp)
-            assert resp.status == "FILE ALREADY DELETED", f"Read succeeded (this is bad), got {resp.status}"
+            assert (
+                resp.status == "FILE ALREADY DELETED"
+            ), f"Read succeeded (this is bad), got {resp.status}"
             # everything else is empty
-
 
     def testzz_tear_down(self):
         for p in self.process_list:
             p.terminate()
             p.kill()
-        assert not any([p.is_alive() for p in self.process_list]), "Processes not terminated"
+        assert not any(
+            [p.is_alive() for p in self.process_list]
+        ), "Processes not terminated"
 
         # also clean up replicas directory
         shutil.rmtree("replicas")
         # fin
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
