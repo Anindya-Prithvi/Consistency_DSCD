@@ -85,8 +85,8 @@ class PBBP(unittest.TestCase):
         assert len(resp.version) > 0, "Version not set"
         # can at most print resp.version, nothing to assert
 
-        print("Write acknoledgement has been received but all replicas may not have written, so sleep [INDEF] ")
-        input()
+        print("Write acknoledgement has been received but all replicas may not have written, so sleep [10] ")
+        sleep(10)
 
     def test05_run_client_read_all(self):
         # using first client
@@ -118,8 +118,8 @@ class PBBP(unittest.TestCase):
         assert len(resp.version) > 0, "Version not set"
         # can at most print resp.version, nothing to assert
 
-        print("Write acknoledgement has been received but all replicas may not have written, so sleep [INDEF] ")
-        input()
+        print("Write acknoledgement has been received but all replicas may not have written, so sleep [10] ")
+        sleep(10)
 
     def test07_run_client_read_all(self):
         # using first client
