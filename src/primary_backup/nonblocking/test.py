@@ -10,8 +10,10 @@ import uuid
 logger = logging.getLogger("test")
 logger.setLevel(logging.INFO)
 
-# running from project_dir/src/
-# so we need to add primary_blocking/nonblocking to sys.path
+# check path has blocking
+if sys.path[-1].find("nonblocking") != -1: print("Not running from blocking directory")
+# running from project_dir/src/ (assumed pre-push)
+# so we need to add primary_blocking/blocking to sys.path
 sys.path.append("primary_backup/nonblocking")
 
 class PBBP(unittest.TestCase):

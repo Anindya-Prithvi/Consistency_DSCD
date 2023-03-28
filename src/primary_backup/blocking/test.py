@@ -10,7 +10,9 @@ import uuid
 logger = logging.getLogger("test")
 logger.setLevel(logging.INFO)
 
-# running from project_dir/src/
+# check path has blocking
+if sys.path[-1].find("blocking") != -1: print("Not running from blocking directory")
+# running from project_dir/src/ (assumed pre-push)
 # so we need to add primary_blocking/blocking to sys.path
 sys.path.append("primary_backup/blocking")
 
