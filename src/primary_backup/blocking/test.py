@@ -22,11 +22,11 @@ class PBBP(unittest.TestCase):
     def test01_launch_registry_server(self):
         # check path has blocking
         if sys.path[0].find("blocking") == -1: print("Not running from blocking directory")
-        # running from project_dir/src/ (assumed pre-push)
-        # so we need to add primary_blocking/blocking to sys.path
-        if sys.path[-1] == "primary_backup/nonblocking":
+        # running from project_dir/src/primary_backup (assumed pre-push)
+        # so we need to add blocking to sys.path
+        if sys.path[-1] == "nonblocking":
             sys.path.pop()
-        sys.path.append("primary_backup/blocking")
+        sys.path.append("blocking")
         from registry_server import serve
 
         p = multiprocessing.Process(target=serve, args=(logger, "[::1]", 1337))
