@@ -87,8 +87,10 @@ Please choose from the following options:
     def read_from_replicas(self, file_uuid):
         latest_response = None
         latest_version = datetime.datetime.min
-        for replica in self.get_read_replicas().servers:
+        for i,replica in enumerate(self.get_read_replicas().servers):
             resp = self.read_from_replica(replica, file_uuid)
+            if i==0:
+                latest_response = resp # to save null response
             # compare version
             # parse version of resp "%d/%m/%Y %H:%M:%S"
             if resp.status != "SUCCESS":
@@ -98,6 +100,12 @@ Please choose from the following options:
                 latest_version = version
                 latest_response = resp
         return latest_response
+
+    def delete_from_replicas(self, file_uuid):
+        responses = []
+        for replica in self.get_write_replicas().servers:
+            responses.append(self.delete_from_replica(replica, file_uuid))
+        return responses
 
     def pretty_print_servers(self, serverlist):
         for i, server in enumerate(serverlist):
