@@ -86,7 +86,7 @@ def get_served(logger, REGISTRY_ADDR, OPTIONS):
         logger.info(OPTIONS)
         try:
             choice = int(input("Enter your choice: "))
-            if choice > 4 or choice < 1:
+            if choice > 6 or choice < 1:
                 raise ValueError
         except ValueError:
             logger.error("Invalid choice")
