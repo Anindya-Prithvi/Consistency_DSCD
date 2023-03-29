@@ -48,13 +48,13 @@ class Serve(quorum_replica_pb2_grpc.ServeServicer):
         # add to map
         # Calculate version
         version = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        request.version = version
-        self.UUID_MAP[request.uuid] = (fixfilename, request.version)
+        
+        self.UUID_MAP[request.uuid] = (fixfilename, version)
         # send to backups using thread worker pool
 
         request.name = fixfilename
         return quorum_replica_pb2.FileObject(
-            status="SUCCESS", uuid=request.uuid, version=request.version
+            status="SUCCESS", uuid=request.uuid, version=version
         )
 
 

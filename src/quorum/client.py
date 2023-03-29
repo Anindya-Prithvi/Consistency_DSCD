@@ -1,3 +1,4 @@
+import datetime
 import uuid
 import logging
 import grpc
@@ -76,6 +77,27 @@ Please choose from the following options:
                 )
             )
             return response
+
+    def write_to_replicas(self, file_uuid, filename, content):
+        responses = []
+        for replica in self.get_write_replicas().servers:
+            responses.append(self.write_to_replica(replica, file_uuid, filename, content))
+        return responses
+
+    def read_from_replicas(self, file_uuid):
+        latest_response = None
+        latest_version = datetime.datetime.min
+        for replica in self.get_read_replicas().servers:
+            resp = self.read_from_replica(replica, file_uuid)
+            # compare version
+            # parse version of resp "%d/%m/%Y %H:%M:%S"
+            if resp.status != "SUCCESS":
+                continue
+            version = datetime.datetime.strptime(resp.version, "%d/%m/%Y %H:%M:%S")
+            if version > latest_version:
+                latest_version = version
+                latest_response = resp
+        return latest_response
 
     def pretty_print_servers(self, serverlist):
         for i, server in enumerate(serverlist):

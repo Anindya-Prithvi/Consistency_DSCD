@@ -40,9 +40,17 @@ do
 			range="$remote_oid..$local_oid"
 		fi
 
-		cd src/ && python -m unittest -v
-		# get latest commit
+		cd src/quorum && python -m unittest -v
 		status=$?
+
+		if [ $status -ne 0 ]; then
+			echo "Tests failed, aborting push"
+			exit $status
+		fi
+
+		cd ../primary_backup && python -m unittest -v
+		status=$?
+		
 
 	fi
 done

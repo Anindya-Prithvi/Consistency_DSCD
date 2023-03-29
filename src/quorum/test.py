@@ -13,7 +13,7 @@ logger.setLevel(logging.INFO)
 
 
 
-class PBBP(unittest.TestCase):
+class QUORUM(unittest.TestCase):
     n = 50
     nr = n//2 + 1 # 26
     nw = n//2 + 1 # 26
@@ -28,7 +28,9 @@ class PBBP(unittest.TestCase):
         # so we need to add primary_blocking/blocking to sys.path
         if sys.path[-1] == "primary_backup/nonblocking":
             sys.path.pop()
-        sys.path.append("primary_backup/blocking")
+        if sys.path[-1] == "primary_backup/blocking":
+            sys.path.pop()
+        sys.path.append("quorum")
         from quorum_registry import serve
 
         # launch config for N, Nr, Nw
@@ -99,73 +101,65 @@ class PBBP(unittest.TestCase):
         # print(f"All replicas: {replica_list}")
         assert len(replica_list.servers) == self.n, "No replicas found"
         
-    def test04_run_client_write_one(self):
+    def test04_run_client_write_nw(self):
         # using first client
-        raise NotImplementedError("Write to replica not implemented")
+        
         c1 = self.client_list[0]
-        replica = random.choice(c1.KNOWN_SERVERS)
+        
         file_uuid = str(uuid.uuid4())
         filename = "I am Walter Hartwell White"
         content = "I live in Albuquerque, New Mexico. I am 51 years old. I have a wife and two children. I am a high school chemistry teacher. I have terminal lung cancer. I am also a methamphetamine manufacturer. I am the one who knocks."
 
         self.client_files[0].append((file_uuid, filename, content))
 
-        st = time.time()
-        resp = c1.write_to_replica(replica, file_uuid, filename, content)
-        assert resp.status == "SUCCESS", "Write failed"
-        assert resp.uuid == file_uuid, "UUID mismatch"
-        assert len(resp.version) > 0, "Version not set"
-        # can at most print resp.version, nothing to assert
-        et = time.time()
-
-        print(f"Write acknoledgement has been received within {et-st}")
-
-    def test05_run_client_read_all(self):
-        # using first client
-        c1 = self.client_list[0]
-        for replica in c1.KNOWN_SERVERS:
-            resp = c1.read_from_replica(replica, self.client_files[0][0][0])
-            # pretty stupid to write on stdout, but ok
-            # print(resp)
+        # st = time.time()
+        resps = c1.write_to_replicas(file_uuid, filename, content)
+        for resp in resps:
             assert resp.status == "SUCCESS", "Write failed"
-            assert (
-                resp.name.find(self.client_files[0][0][1]) != -1
-            ), f"Names don't match, Expected {self.client_files[0][0][1]} got {resp.name}"
-            assert resp.content == self.client_files[0][0][2], f"content mismatch"
-            assert len(resp.version) > 0, f"Version not set on replica {replica}"
+            assert resp.uuid == file_uuid, "UUID mismatch"
+            assert len(resp.version) > 0, "Version not set"
+        # can at most print resp.version, nothing to assert
+        # et = time.time()
 
-    def test06_run_client_write_two(self):
+
+    def test05_run_client_read_nr(self):
         # using first client
         c1 = self.client_list[0]
-        replica = random.choice(c1.KNOWN_SERVERS)
+        latest_file = c1.read_from_replicas(self.client_files[0][0][0])
+        assert latest_file.status == "SUCCESS", "Read failed"
+        assert latest_file.name.find(self.client_files[0][0][1])!=-1, f"Filename mismatch, got {latest_file.name}"
+        assert latest_file.content == self.client_files[0][0][2], "Content mismatch"
+        assert len(latest_file.version) > 0, "Version not set"
+
+
+    def test06_run_client_write_nw_two(self):
+        # using first client
+        c1 = self.client_list[0]
+        
         file_uuid = str(uuid.uuid4())
-        filename = "Mary on Cross"
-        content = "...You go down just like Holy Mary, Mary on a, Mary on a cross Not just another bloody Mary, Mary on a, Mary on a cross. Your beauty never fai..."
+        filename = "Poetic Rizz"
+        content = "You and the sun hold little to no difference, just like I cannot ignore the sun's rays of light, I cannot ignore your radiant beauty."
 
         self.client_files[0].append((file_uuid, filename, content))
 
-        st = time.time()
-        resp = c1.write_to_replica(replica, file_uuid, filename, content)
-        assert resp.status == "SUCCESS", "Write failed"
-        assert resp.uuid == file_uuid, "UUID mismatch"
-        assert len(resp.version) > 0, "Version not set"
-        et = time.time()
+        # st = time.time()
+        resps = c1.write_to_replicas(file_uuid, filename, content)
+        for resp in resps:
+            assert resp.status == "SUCCESS", "Write failed"
+            assert resp.uuid == file_uuid, "UUID mismatch"
+            assert len(resp.version) > 0, "Version not set"
         # can at most print resp.version, nothing to assert
-        print(f"Write acknoledgement has been received within {et-st}")
+        # et = time.time()
 
-    def test07_run_client_read_all(self):
+
+    def test07_run_client_read_nr_two(self):
         # using first client
         c1 = self.client_list[0]
-        for replica in c1.KNOWN_SERVERS:
-            resp = c1.read_from_replica(replica, self.client_files[0][1][0])
-            # pretty stupid to write on stdout, but ok
-            # print(resp)
-            assert resp.status == "SUCCESS", "Write failed"
-            assert resp.name.find(self.client_files[0][1][1]) != -1, "Name mismatch"
-            assert (
-                resp.content == self.client_files[0][1][2]
-            ), f"Content mismatch on replica {replica}, expected {self.client_files[0][1][2]} got {resp.content}"
-            assert len(resp.version) > 0, f"Version not set on replica {replica}"
+        latest_file = c1.read_from_replicas(self.client_files[0][1][0])
+        assert latest_file.status == "SUCCESS", "Read failed"
+        assert latest_file.name.find(self.client_files[0][1][1])!=-1, f"Filename mismatch, got {latest_file.name}"
+        assert latest_file.content == self.client_files[0][1][2], "Content mismatch"
+        assert len(latest_file.version) > 0, "Version not set"
 
     def test08_run_client_delete_one(self):
         # using first client
