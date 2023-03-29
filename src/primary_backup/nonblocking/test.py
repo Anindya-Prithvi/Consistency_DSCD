@@ -32,11 +32,12 @@ class PBNP(unittest.TestCase):
         p = multiprocessing.Process(target=serve, args=(logger, "[::1]", 1337))
         p.start()
         self.process_list.append(p)
-        assert p.is_alive(), "Registry server not launched"
+        
         # print return value of serve
 
         print("Waiting for registry server to come up...[2seconds]")
         sleep(2)
+        assert p.is_alive(), "Registry server not launched"
 
     def test02_run_n_replicas(self):
         from replica import serve
@@ -58,11 +59,12 @@ class PBNP(unittest.TestCase):
         for p in processes:
             p.start()
             self.process_list.append(p)
-        for p in processes:
-            assert p.is_alive(), "Replica server not launched"
+        
 
         print("Waiting for all replicas to come up...[5seconds]")
         sleep(5)
+        for p in processes:
+            assert p.is_alive(), "Replica server not launched"
 
     def test03_run_client(self):
         from client import Client
