@@ -1,0 +1,25 @@
+syntax = "proto3";
+import "quorum_registry.proto";
+
+message FileObject {
+    optional string status = 1;
+    optional string uuid = 2;
+    optional string version = 3;
+    optional string content = 4;
+    optional string name = 5;
+}
+
+service Primera {
+    rpc RecvReplica(Server_information) returns (Success);
+}
+
+service Serve {
+    rpc Write(FileObject) returns (FileObject) {}
+    rpc Read(FileObject) returns (FileObject) {}
+    rpc Delete(FileObject) returns (FileObject) {}
+}
+
+service Backup {
+    rpc WriteBackup(FileObject) returns (Success) {}
+    rpc DeleteBackup(FileObject) returns (Success) {}
+}
