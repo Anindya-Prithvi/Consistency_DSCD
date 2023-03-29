@@ -14,13 +14,10 @@ import datetime
 
 class Serve(quorum_replica_pb2_grpc.ServeServicer):
     def __init__(
-        self, logger, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS, _server_id
+        self, logger, UUID_MAP, _server_id
     ):
         self.logger = logger
-        self.IS_PRIMARY = IS_PRIMARY
-        self.PRIMARY_SERVER = PRIMARY_SERVER
         self.UUID_MAP = UUID_MAP
-        self.REPLICAS = REPLICAS
         self._server_id = _server_id
         super().__init__()
 
@@ -125,25 +122,14 @@ def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
         os.mkdir("replicas/" + str(_server_id))
 
     port = str(PORT)
-    IS_PRIMARY = False
-
     # connect to registry
     with grpc.insecure_channel(REGISTRY_ADDR) as channel:
         stub = quorum_registry_pb2_grpc.MaintainStub(channel)
         response = stub.RegisterServer(
             quorum_registry_pb2.Server_information(ip=EXPOSE_IP, port=port)
         )
-        if response:
+        if response.value:
             logger.info("Successfully registered with registry")
-
-            PRIMARY_SERVER = quorum_registry_pb2.Server_information(
-                ip=response.ip, port=response.port
-            )
-
-            if response.ip == EXPOSE_IP and response.port == port:
-                IS_PRIMARY = True
-                logger.info("This is the primary replica")
-                # Launch primary replica receive service
         else:
             logger.critical("Failed to register with registry. No response")
             exit(1)
@@ -151,9 +137,8 @@ def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 
     UUID_MAP = {}
-    REPLICAS = quorum_registry_pb2.Server_book()
     quorum_replica_pb2_grpc.add_ServeServicer_to_server(
-        Serve(logger, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS, _server_id),
+        Serve(logger, UUID_MAP, _server_id),
         server,
     )
 

@@ -22,28 +22,27 @@ Please choose from the following options:
     8. Ask for all replicas [debug]
     9. Exit
 """
-        response = self.client_get_replicas()
-        self.KNOWN_SERVERS = (
-            response.servers
-        )  # critical anyways, error handling not done
         self.UUID_STORE = set()
 
     def get_write_replicas(self):
         with grpc.insecure_channel(self.REGISTRY_ADDR) as channel:
             stub = quorum_registry_pb2_grpc.MaintainStub(channel)
             response = stub.GetWriteReplicas(quorum_registry_pb2.Empty())
+            self.nw = response
             return response
 
     def get_read_replicas(self):
         with grpc.insecure_channel(self.REGISTRY_ADDR) as channel:
             stub = quorum_registry_pb2_grpc.MaintainStub(channel)
             response = stub.GetReadReplicas(quorum_registry_pb2.Empty())
+            self.nr = response
             return response
 
     def get_all_replicas(self):
         with grpc.insecure_channel(self.REGISTRY_ADDR) as channel:
             stub = quorum_registry_pb2_grpc.MaintainStub(channel)
             response = stub.GetAllReplicas(quorum_registry_pb2.Empty())
+            self.n = response
             return response
 
     def write_to_replica(self, replica, file_uuid, filename, content):
@@ -68,12 +67,6 @@ Please choose from the following options:
             )
             return response
 
-    def client_get_replicas(self):
-        with grpc.insecure_channel(self.REGISTRY_ADDR) as channel:
-            stub = quorum_registry_pb2_grpc.MaintainStub(channel)
-            response = stub.GetServerList(quorum_registry_pb2.Empty())
-            return response
-
     def delete_from_replica(self, replica, file_uuid):
         with grpc.insecure_channel(f"{replica.ip}:{replica.port}") as channel:
             stub = quorum_replica_pb2_grpc.ServeStub(channel)
@@ -84,8 +77,8 @@ Please choose from the following options:
             )
             return response
 
-    def pretty_print_servers(self):
-        for i, server in enumerate(self.KNOWN_SERVERS):
+    def pretty_print_servers(self, serverlist):
+        for i, server in enumerate(serverlist):
             print(f"{i+1}. {server.ip}:{server.port}")
 
     def print_options(self):
@@ -101,6 +94,7 @@ def get_served(logger, REGISTRY_ADDR, OPTIONS):
 
     # create client object
     client = Client(logger, REGISTRY_ADDR, OPTIONS)
+    #TODO: Rewrite interaction
 
     while True:
         # give user options of read write and delete

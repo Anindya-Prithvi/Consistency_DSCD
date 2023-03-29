@@ -8,12 +8,16 @@ import random
 
 class Maintain(quorum_registry_pb2_grpc.MaintainServicer):
 
-    def __init__(self, logger, N:tuple(int, int, int)):
+    def __init__(self, logger, N):
         self.logger = logger
+        if N[0] >= N[1] + N[2]:
+            raise ValueError("Invalid number of replicas (>= than read+write))")
+        if N[2]<N[0]/2:
+            raise ValueError("Invalid number of write replicas (write less than half)")
         self.N = N[0]
         self.Nr = N[1]
         self.Nw = N[2]
-        self.registered = quorum_registry_pb2.ServerList()
+        self.registered = quorum_registry_pb2.Server_book()
         super().__init__()
 
     def RegisterServer(self, request, context):
@@ -47,7 +51,7 @@ class Maintain(quorum_registry_pb2_grpc.MaintainServicer):
             "SERVER LIST REQUEST FROM %s",
             context.peer(),
         )
-        return quorum_registry_pb2.ServerList(random.sample(self.registered.servers, self.Nw))
+        return quorum_registry_pb2.Server_book(servers = random.sample(self.registered.servers, self.Nw))
     
     def GetReadReplicas(self, request, context):
         # choose Nr random servers
@@ -56,15 +60,10 @@ class Maintain(quorum_registry_pb2_grpc.MaintainServicer):
             "SERVER LIST REQUEST FROM %s",
             context.peer(),
         )
-        return quorum_registry_pb2.ServerList(random.sample(self.registered.servers, self.Nr))
+        return quorum_registry_pb2.Server_book(servers = random.sample(self.registered.servers, self.Nr))
 
 
-def serve(logger, EXPOSE_IP, PORT, N:tuple(int, int, int)):
-    if N[0] <= N[1] + N[2]:
-        raise ValueError("Invalid number of replicas (less than read+write))")
-    if N[2]<N[0]/2:
-        raise ValueError("Invalid number of write replicas (less than half)")
-
+def serve(logger, EXPOSE_IP, PORT, N):
     port = str(PORT)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=50))
     quorum_registry_pb2_grpc.add_MaintainServicer_to_server(Maintain(logger, N), server)

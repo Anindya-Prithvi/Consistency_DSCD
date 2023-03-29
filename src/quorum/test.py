@@ -15,6 +15,8 @@ logger.setLevel(logging.INFO)
 
 class PBBP(unittest.TestCase):
     n = 50
+    nr = n//2 + 1 # 26
+    nw = n//2 + 1 # 26
     process_list = []
     client_list = []
     client_files = [[]]
@@ -29,14 +31,19 @@ class PBBP(unittest.TestCase):
         sys.path.append("primary_backup/blocking")
         from quorum_registry import serve
 
-        p = multiprocessing.Process(target=serve, args=(logger, "[::1]", 1337))
+        # launch config for N, Nr, Nw
+        
+        N = (self.n, self.nr, self.nw)
+
+        p = multiprocessing.Process(target=serve, args=(logger, "[::1]", 1337, N))
         p.start()
         self.process_list.append(p)
-        assert p.is_alive(), "Registry server not launched"
+        
         # print return value of serve
 
         print("Waiting for registry server to come up...[2seconds]")
         sleep(2)
+        assert p.is_alive(), "Registry server not launched"
 
     def test02_run_n_replicas(self):
         from quorum_replica import serve
@@ -69,12 +76,32 @@ class PBBP(unittest.TestCase):
 
         c1 = Client(logger, "[::1]:1337")
         self.client_list.append(c1)
-        assert (
-            len(c1.KNOWN_SERVERS) == self.n
-        ), f"All servers not up. Expected {self.n}, got {len(c1.KNOWN_SERVERS)}"
+        assert c1 is not None, "Client object creation failed"
 
+    def test03_run_client1_get_read_replicas(self):
+        # using first client
+        c1 = self.client_list[0]
+        replica_list = c1.get_read_replicas()
+        # print(f"Read replicas: {replica_list}")
+        assert len(replica_list.servers) == self.nr, "No read replicas found"
+
+    def test03_run_client1_get_write_replicas(self):
+        # using first client
+        c1 = self.client_list[0]
+        replica_list = c1.get_write_replicas()
+        # print(f"Write replicas: {replica_list}")
+        assert len(replica_list.servers) == self.nw, "No write replicas found"
+
+    def test03_run_client1_get_all_replicas(self):
+        # using first client
+        c1 = self.client_list[0]
+        replica_list = c1.get_all_replicas()
+        # print(f"All replicas: {replica_list}")
+        assert len(replica_list.servers) == self.n, "No replicas found"
+        
     def test04_run_client_write_one(self):
         # using first client
+        raise NotImplementedError("Write to replica not implemented")
         c1 = self.client_list[0]
         replica = random.choice(c1.KNOWN_SERVERS)
         file_uuid = str(uuid.uuid4())
