@@ -4,7 +4,7 @@ import uuid
 import logging
 import grpc
 import argparse
-import registry_server_pb2, registry_server_pb2_grpc, replica_pb2, replica_pb2_grpc
+import quorum_registry_pb2, quorum_registry_pb2_grpc, quorum_replica_pb2, quorum_replica_pb2_grpc
 import os
 from time import sleep
 import datetime
@@ -12,7 +12,7 @@ import datetime
 # TO SIMULATE REALTIME WRITE DELAYS IN BACKUPS (PER GC Comments), sleep is added
 
 
-class Primera(replica_pb2_grpc.PrimeraServicer):
+class Primera(quorum_replica_pb2_grpc.PrimeraServicer):
     def __init__(self, logger, REPLICAS):
         self.logger = logger
         self.REPLICAS = REPLICAS
@@ -24,13 +24,13 @@ class Primera(replica_pb2_grpc.PrimeraServicer):
         if any(
             i.ip == request.ip and i.port == request.port for i in self.REPLICAS.servers
         ):
-            return registry_server_pb2.Success(value=False)
+            return quorum_registry_pb2.Success(value=False)
         else:
             self.REPLICAS.servers.add(ip=request.ip, port=request.port)
-            return registry_server_pb2.Success(value=True)
+            return quorum_registry_pb2.Success(value=True)
 
 
-class Backup(replica_pb2_grpc.BackupServicer):
+class Backup(quorum_replica_pb2_grpc.BackupServicer):
     def __init__(self, logger, UUID_MAP, server_id):
         self.logger = logger
         self.UUID_MAP = UUID_MAP
@@ -54,7 +54,7 @@ class Backup(replica_pb2_grpc.BackupServicer):
 
         # add to map
         self.UUID_MAP[request.uuid] = (request.name, request.version)
-        return registry_server_pb2.Success(value=True)
+        return quorum_registry_pb2.Success(value=True)
 
     def DeleteBackup(self, request, context):
         self.logger.info("DELETE FROM PRIMERA")
@@ -65,12 +65,12 @@ class Backup(replica_pb2_grpc.BackupServicer):
         os.remove("replicas/" + str(self.server_id) + "/" + name)
         # deref in map, timestamp of deletion
         self.UUID_MAP[request.uuid] = ("", request.version)
-        return registry_server_pb2.Success(value=True)
+        return quorum_registry_pb2.Success(value=True)
 
 
 def SendToBackups(request, known_replica, request_type: str):
     with grpc.insecure_channel(known_replica.ip + ":" + known_replica.port) as channel:
-        stub = replica_pb2_grpc.BackupStub(channel)
+        stub = quorum_replica_pb2_grpc.BackupStub(channel)
         if request_type == "write":
             response = stub.WriteBackup(request)
         elif request_type == "delete":
@@ -78,7 +78,7 @@ def SendToBackups(request, known_replica, request_type: str):
         return response.value
 
 
-class Serve(replica_pb2_grpc.ServeServicer):
+class Serve(quorum_replica_pb2_grpc.ServeServicer):
     def __init__(
         self, logger, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS, _server_id
     ):
@@ -96,14 +96,14 @@ class Serve(replica_pb2_grpc.ServeServicer):
         uuid_exists = request.uuid in self.UUID_MAP
         # Scenario 4
         if uuid_exists and self.UUID_MAP[request.uuid][0] == "":
-            return replica_pb2.FileObject(status="DELETED FILE CANNOT BE UPDATED")
+            return quorum_replica_pb2.FileObject(status="DELETED FILE CANNOT BE UPDATED")
         fixfilename = f"'{request.name}'"
         # fixfilename = fixfilename.replace("/", "_") # sanitizer
         # Scenario 2, check if file exists
         if not uuid_exists and os.path.exists(
             "replicas/" + str(self._server_id) + "/" + fixfilename
         ):
-            return replica_pb2.FileObject(status="FILE WITH SAME NAME ALREADY EXISTS")
+            return quorum_replica_pb2.FileObject(status="FILE WITH SAME NAME ALREADY EXISTS")
 
         # send to primary replica
         if self.IS_PRIMARY:
@@ -136,18 +136,18 @@ class Serve(replica_pb2_grpc.ServeServicer):
             # check if all backups succeeded
 
             if reduce(lambda x, y: x and y, ff):
-                return replica_pb2.FileObject(
+                return quorum_replica_pb2.FileObject(
                     status="SUCCESS", uuid=request.uuid, version=version
                 )
             else:
-                return replica_pb2.FileObject(
+                return quorum_replica_pb2.FileObject(
                     status="FAILURE",
                 )
         else:
             with grpc.insecure_channel(
                 self.PRIMARY_SERVER.ip + ":" + self.PRIMARY_SERVER.port
             ) as channel:
-                stub = replica_pb2_grpc.ServeStub(channel)
+                stub = quorum_replica_pb2_grpc.ServeStub(channel)
                 resprim = stub.Write(request)
                 return resprim
 
@@ -156,7 +156,7 @@ class Serve(replica_pb2_grpc.ServeServicer):
 
         # scenario 1, uuid not in map
         if request.uuid not in self.UUID_MAP:
-            return replica_pb2.FileObject(status="FILE DOES NOT EXIST")
+            return quorum_replica_pb2.FileObject(status="FILE DOES NOT EXIST")
 
         # get name from UUID_MAP
         filename = self.UUID_MAP[request.uuid][0]
@@ -167,7 +167,7 @@ class Serve(replica_pb2_grpc.ServeServicer):
                 data = f.read()
 
             # scenario 2, everything goes well
-            return replica_pb2.FileObject(
+            return quorum_replica_pb2.FileObject(
                 status="SUCCESS",
                 name=filename,
                 version=self.UUID_MAP[request.uuid][1],
@@ -175,7 +175,7 @@ class Serve(replica_pb2_grpc.ServeServicer):
             )
         except (FileNotFoundError, PermissionError) as e:
             # scenario 3, file not in fs
-            return replica_pb2.FileObject(
+            return quorum_replica_pb2.FileObject(
                 status="FILE ALREADY DELETED", uuid=request.uuid
             )
 
@@ -183,13 +183,13 @@ class Serve(replica_pb2_grpc.ServeServicer):
         # calculate deletion time if PRIMARY
         # check if uuid exists, scenario 1
         if request.uuid not in self.UUID_MAP:
-            return replica_pb2.FileObject(status="FILE DOES NOT EXIST")
+            return quorum_replica_pb2.FileObject(status="FILE DOES NOT EXIST")
         # delete from primary
         filename = self.UUID_MAP[request.uuid][0]
 
         # check if file exists, in UUID_MAP, scenario 3
         if filename == "":
-            return replica_pb2.FileObject(status="FILE ALREADY DELETED")
+            return quorum_replica_pb2.FileObject(status="FILE ALREADY DELETED")
 
         if self.IS_PRIMARY:
             # delete file, scenario 2
@@ -210,19 +210,19 @@ class Serve(replica_pb2_grpc.ServeServicer):
             # accumulate return values
             # check if all backups succeeded
             if reduce(lambda x, y: x and y, ff):
-                return replica_pb2.FileObject(
+                return quorum_replica_pb2.FileObject(
                     status="SUCCESS",
                     # version=version # not needed
                 )
             else:
-                return replica_pb2.FileObject(
+                return quorum_replica_pb2.FileObject(
                     status="FAILURE",
                 )
         else:
             with grpc.insecure_channel(
                 self.PRIMARY_SERVER.ip + ":" + self.PRIMARY_SERVER.port
             ) as channel:
-                stub = replica_pb2_grpc.ServeStub(channel)
+                stub = quorum_replica_pb2_grpc.ServeStub(channel)
                 resprim = stub.Delete(request)
                 return resprim
 
@@ -241,14 +241,14 @@ def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
 
     # connect to registry
     with grpc.insecure_channel(REGISTRY_ADDR) as channel:
-        stub = registry_server_pb2_grpc.MaintainStub(channel)
+        stub = quorum_registry_pb2_grpc.MaintainStub(channel)
         response = stub.RegisterServer(
-            registry_server_pb2.Server_information(ip=EXPOSE_IP, port=port)
+            quorum_registry_pb2.Server_information(ip=EXPOSE_IP, port=port)
         )
         if response:
             logger.info("Successfully registered with registry")
 
-            PRIMARY_SERVER = registry_server_pb2.Server_information(
+            PRIMARY_SERVER = quorum_registry_pb2.Server_information(
                 ip=response.ip, port=response.port
             )
 
@@ -263,18 +263,18 @@ def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 
     UUID_MAP = {}
-    REPLICAS = registry_server_pb2.Server_book()
-    replica_pb2_grpc.add_ServeServicer_to_server(
+    REPLICAS = quorum_registry_pb2.Server_book()
+    quorum_replica_pb2_grpc.add_ServeServicer_to_server(
         Serve(logger, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS, _server_id),
         server,
     )
 
     if IS_PRIMARY:
-        replica_pb2_grpc.add_PrimeraServicer_to_server(
+        quorum_replica_pb2_grpc.add_PrimeraServicer_to_server(
             Primera(logger, REPLICAS), server
         )
     else:
-        replica_pb2_grpc.add_BackupServicer_to_server(
+        quorum_replica_pb2_grpc.add_BackupServicer_to_server(
             Backup(logger, UUID_MAP, _server_id), server
         )
     server.add_insecure_port(EXPOSE_IP + ":" + port)  # no TLS moment

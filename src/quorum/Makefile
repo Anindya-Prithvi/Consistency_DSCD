@@ -1,5 +1,5 @@
 all:
-	python -m grpc_tools.protoc -I ../../../protos --python_out=. --grpc_python_out=. registry_server.proto replica.proto
+	python -m grpc_tools.protoc -I ../../protos --python_out=. --grpc_python_out=. quorum_registry.proto quorum_replica.proto
 
 clean:
 	rm -r replicas

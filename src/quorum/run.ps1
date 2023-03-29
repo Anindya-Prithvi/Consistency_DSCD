@@ -11,7 +11,7 @@ else {
     $bgServer = "normal"
 }
 
-$pidList += Start-Process python "registry_server.py" -PassThru -WindowStyle $bgServer
+$pidList += Start-Process python "quorum_registry.py" -PassThru -WindowStyle $bgServer
 
 # ask for number of servers to run
 $numServers = Read-Host -Prompt "Enter number of servers to run"
@@ -19,7 +19,7 @@ $numServers = Read-Host -Prompt "Enter number of servers to run"
 # run servers
 for ($i = 0; $i -lt $numServers; $i++) {
     # start server and add to pidlist using Start-Process python "server.py --port 1200$i" -PassThru -WindowStyle $bgServer
-    $pidList += Start-Process python "replica.py --port 1200$i" -PassThru -WindowStyle $bgServer
+    $pidList += Start-Process python "quorum_replica.py --port 1200$i" -PassThru -WindowStyle $bgServer
 }
 
 # Confirm launches
