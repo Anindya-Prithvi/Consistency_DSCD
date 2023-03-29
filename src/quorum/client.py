@@ -2,7 +2,7 @@ import uuid
 import logging
 import grpc
 import argparse
-import registry_server_pb2, registry_server_pb2_grpc, replica_pb2, replica_pb2_grpc
+import quorum_registry_pb2, quorum_registry_pb2_grpc, quorum_replica_pb2, quorum_replica_pb2_grpc
 
 
 class Client:
@@ -17,7 +17,10 @@ Please choose from the following options:
     ## utility options ##
     4. Print known UUIDs
     5. Print known servers
-    6. Exit
+    6. Ask Registry for write replicas
+    7. Ask Registry for read replicas
+    8. Ask for all replicas [debug]
+    9. Exit
 """
         response = self.client_get_replicas()
         self.KNOWN_SERVERS = (
@@ -25,11 +28,29 @@ Please choose from the following options:
         )  # critical anyways, error handling not done
         self.UUID_STORE = set()
 
+    def get_write_replicas(self):
+        with grpc.insecure_channel(self.REGISTRY_ADDR) as channel:
+            stub = quorum_registry_pb2_grpc.MaintainStub(channel)
+            response = stub.GetWriteReplicas(quorum_registry_pb2.Empty())
+            return response
+
+    def get_read_replicas(self):
+        with grpc.insecure_channel(self.REGISTRY_ADDR) as channel:
+            stub = quorum_registry_pb2_grpc.MaintainStub(channel)
+            response = stub.GetReadReplicas(quorum_registry_pb2.Empty())
+            return response
+
+    def get_all_replicas(self):
+        with grpc.insecure_channel(self.REGISTRY_ADDR) as channel:
+            stub = quorum_registry_pb2_grpc.MaintainStub(channel)
+            response = stub.GetAllReplicas(quorum_registry_pb2.Empty())
+            return response
+
     def write_to_replica(self, replica, file_uuid, filename, content):
         with grpc.insecure_channel(f"{replica.ip}:{replica.port}") as channel:
-            stub = replica_pb2_grpc.ServeStub(channel)
+            stub = quorum_replica_pb2_grpc.ServeStub(channel)
             response = stub.Write(
-                replica_pb2.FileObject(
+                quorum_replica_pb2.FileObject(
                     uuid=file_uuid,
                     name=filename,
                     content=content,
@@ -39,9 +60,9 @@ Please choose from the following options:
 
     def read_from_replica(self, replica, file_uuid):
         with grpc.insecure_channel(f"{replica.ip}:{replica.port}") as channel:
-            stub = replica_pb2_grpc.ServeStub(channel)
+            stub = quorum_replica_pb2_grpc.ServeStub(channel)
             response = stub.Read(
-                replica_pb2.FileObject(
+                quorum_replica_pb2.FileObject(
                     uuid=file_uuid,
                 )
             )
@@ -49,15 +70,15 @@ Please choose from the following options:
 
     def client_get_replicas(self):
         with grpc.insecure_channel(self.REGISTRY_ADDR) as channel:
-            stub = registry_server_pb2_grpc.MaintainStub(channel)
-            response = stub.GetServerList(registry_server_pb2.Empty())
+            stub = quorum_registry_pb2_grpc.MaintainStub(channel)
+            response = stub.GetServerList(quorum_registry_pb2.Empty())
             return response
 
     def delete_from_replica(self, replica, file_uuid):
         with grpc.insecure_channel(f"{replica.ip}:{replica.port}") as channel:
-            stub = replica_pb2_grpc.ServeStub(channel)
+            stub = quorum_replica_pb2_grpc.ServeStub(channel)
             response = stub.Delete(
-                replica_pb2.FileObject(
+                quorum_replica_pb2.FileObject(
                     uuid=file_uuid,
                 )
             )

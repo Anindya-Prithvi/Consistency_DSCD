@@ -12,72 +12,6 @@ import datetime
 # TO SIMULATE REALTIME WRITE DELAYS IN BACKUPS (PER GC Comments), sleep is added
 
 
-class Primera(quorum_replica_pb2_grpc.PrimeraServicer):
-    def __init__(self, logger, REPLICAS):
-        self.logger = logger
-        self.REPLICAS = REPLICAS
-        super().__init__()
-
-    def RecvReplica(self, request, context):
-        self.logger.info("RECEIVED NEW REGISTERED SERVER")
-        # check if already in self.REPLICAS.servers
-        if any(
-            i.ip == request.ip and i.port == request.port for i in self.REPLICAS.servers
-        ):
-            return quorum_registry_pb2.Success(value=False)
-        else:
-            self.REPLICAS.servers.add(ip=request.ip, port=request.port)
-            return quorum_registry_pb2.Success(value=True)
-
-
-class Backup(quorum_replica_pb2_grpc.BackupServicer):
-    def __init__(self, logger, UUID_MAP, server_id):
-        self.logger = logger
-        self.UUID_MAP = UUID_MAP
-        self.server_id = server_id
-        super().__init__()
-
-    def WriteBackup(self, request, context):
-        self.logger.info("WRITE FROM PRIMERA")
-        # write to file
-        fobj = os.open(
-            "replicas/" + str(self.server_id) + "/" + request.name,
-            os.O_CREAT | os.O_WRONLY,
-        )
-        os.write(fobj, request.content.encode())
-        os.close(fobj)
-
-        # COMMENT BELOW FOR NO DELAY
-        import random
-
-        sleep(random.randint(0, 3_000_000) / 1_000_000)
-
-        # add to map
-        self.UUID_MAP[request.uuid] = (request.name, request.version)
-        return quorum_registry_pb2.Success(value=True)
-
-    def DeleteBackup(self, request, context):
-        self.logger.info("DELETE FROM PRIMERA")
-        # delete file
-        # get name from UUID_MAP
-        name = self.UUID_MAP[request.uuid][0]
-
-        os.remove("replicas/" + str(self.server_id) + "/" + name)
-        # deref in map, timestamp of deletion
-        self.UUID_MAP[request.uuid] = ("", request.version)
-        return quorum_registry_pb2.Success(value=True)
-
-
-def SendToBackups(request, known_replica, request_type: str):
-    with grpc.insecure_channel(known_replica.ip + ":" + known_replica.port) as channel:
-        stub = quorum_replica_pb2_grpc.BackupStub(channel)
-        if request_type == "write":
-            response = stub.WriteBackup(request)
-        elif request_type == "delete":
-            response = stub.DeleteBackup(request)
-        return response.value
-
-
 class Serve(quorum_replica_pb2_grpc.ServeServicer):
     def __init__(
         self, logger, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS, _server_id
@@ -105,51 +39,27 @@ class Serve(quorum_replica_pb2_grpc.ServeServicer):
         ):
             return quorum_replica_pb2.FileObject(status="FILE WITH SAME NAME ALREADY EXISTS")
 
-        # send to primary replica
-        if self.IS_PRIMARY:
-            # write to file
-            fobj = os.open(
-                "replicas/" + str(self._server_id) + "/" + fixfilename,
-                os.O_CREAT | os.O_WRONLY,
-            )
-            os.write(fobj, request.content.encode())
-            os.close(fobj)
-            # best case, scenario and also update (1,3)
-            # add to map
-            # Calculate version
-            version = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-            request.version = version
-            self.UUID_MAP[request.uuid] = (fixfilename, request.version)
-            # send to backups using thread worker pool
+    
+        # write to file
+        fobj = os.open(
+            "replicas/" + str(self._server_id) + "/" + fixfilename,
+            os.O_CREAT | os.O_WRONLY,
+        )
+        os.write(fobj, request.content.encode())
+        os.close(fobj)
+        # best case, scenario and also update (1,3)
+        # add to map
+        # Calculate version
+        version = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        request.version = version
+        self.UUID_MAP[request.uuid] = (fixfilename, request.version)
+        # send to backups using thread worker pool
 
-            request.name = fixfilename
+        request.name = fixfilename
+        return quorum_replica_pb2.FileObject(
+            status="SUCCESS", uuid=request.uuid, version=request.version
+        )
 
-            ff_tpool = futures.ThreadPoolExecutor(max_workers=20)
-            ff = ff_tpool.map(
-                SendToBackups,
-                [request] * len(self.REPLICAS.servers),
-                self.REPLICAS.servers,
-                ["write"] * len(self.REPLICAS.servers),
-            )
-
-            # accumulate return values
-            # check if all backups succeeded
-
-            if reduce(lambda x, y: x and y, ff):
-                return quorum_replica_pb2.FileObject(
-                    status="SUCCESS", uuid=request.uuid, version=version
-                )
-            else:
-                return quorum_replica_pb2.FileObject(
-                    status="FAILURE",
-                )
-        else:
-            with grpc.insecure_channel(
-                self.PRIMARY_SERVER.ip + ":" + self.PRIMARY_SERVER.port
-            ) as channel:
-                stub = quorum_replica_pb2_grpc.ServeStub(channel)
-                resprim = stub.Write(request)
-                return resprim
 
     def Read(self, request, context):
         self.logger.info("READ REQUEST FROM %s", context.peer())
@@ -191,40 +101,18 @@ class Serve(quorum_replica_pb2_grpc.ServeServicer):
         if filename == "":
             return quorum_replica_pb2.FileObject(status="FILE ALREADY DELETED")
 
-        if self.IS_PRIMARY:
-            # delete file, scenario 2
-            os.remove("replicas/" + str(self._server_id) + "/" + filename)
+    
+        # delete file, scenario 2
+        os.remove("replicas/" + str(self._server_id) + "/" + filename)
 
-            version = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-            self.UUID_MAP[request.uuid] = ("", version)
-            request.version = version
+        version = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        self.UUID_MAP[request.uuid] = ("", version)
+        request.version = version
 
-            # send to backups using thread worker pool
-            ff_tpool = futures.ThreadPoolExecutor(max_workers=20)
-            ff = ff_tpool.map(
-                SendToBackups,
-                [request] * len(self.REPLICAS.servers),
-                self.REPLICAS.servers,
-                ["delete"] * len(self.REPLICAS.servers),
-            )
-            # accumulate return values
-            # check if all backups succeeded
-            if reduce(lambda x, y: x and y, ff):
-                return quorum_replica_pb2.FileObject(
-                    status="SUCCESS",
-                    # version=version # not needed
-                )
-            else:
-                return quorum_replica_pb2.FileObject(
-                    status="FAILURE",
-                )
-        else:
-            with grpc.insecure_channel(
-                self.PRIMARY_SERVER.ip + ":" + self.PRIMARY_SERVER.port
-            ) as channel:
-                stub = quorum_replica_pb2_grpc.ServeStub(channel)
-                resprim = stub.Delete(request)
-                return resprim
+        return quorum_replica_pb2.FileObject(
+            status="SUCCESS",
+            # version=version # not needed
+        )
 
 
 def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
@@ -269,14 +157,6 @@ def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
         server,
     )
 
-    if IS_PRIMARY:
-        quorum_replica_pb2_grpc.add_PrimeraServicer_to_server(
-            Primera(logger, REPLICAS), server
-        )
-    else:
-        quorum_replica_pb2_grpc.add_BackupServicer_to_server(
-            Backup(logger, UUID_MAP, _server_id), server
-        )
     server.add_insecure_port(EXPOSE_IP + ":" + port)  # no TLS moment
     server.start()
 

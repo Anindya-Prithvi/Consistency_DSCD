@@ -32,11 +32,11 @@ message Empty {}
 /// Maintains the Server_book and fetches servers for incoming clients
 service Maintain {
     /// register a server with it's name and address, return a success value
-    rpc RegisterServer (Server_information) returns (Server_information);
+    rpc RegisterServer (Server_information) returns (Success);
     /// [debug] get the server list for a client who may want to know about existing servers
-    rpc GetAllServerList (Empty) returns (Server_book);
+    rpc GetAllReplicas (Empty) returns (Server_book);
     /// get write servers
-    rpc GetWriteServerList (Empty) returns (Server_book);
+    rpc GetWriteReplicas (Empty) returns (Server_book);
     /// get read servers
-    rpc GetReadServerList (Empty) returns (Server_book);
+    rpc GetReadReplicas (Empty) returns (Server_book);
 }

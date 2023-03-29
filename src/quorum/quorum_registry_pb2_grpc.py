@@ -18,10 +18,20 @@ class MaintainStub(object):
         self.RegisterServer = channel.unary_unary(
                 '/Maintain/RegisterServer',
                 request_serializer=quorum__registry__pb2.Server_information.SerializeToString,
-                response_deserializer=quorum__registry__pb2.Server_information.FromString,
+                response_deserializer=quorum__registry__pb2.Success.FromString,
                 )
-        self.GetServerList = channel.unary_unary(
-                '/Maintain/GetServerList',
+        self.GetAllReplicas = channel.unary_unary(
+                '/Maintain/GetAllReplicas',
+                request_serializer=quorum__registry__pb2.Empty.SerializeToString,
+                response_deserializer=quorum__registry__pb2.Server_book.FromString,
+                )
+        self.GetWriteReplicas = channel.unary_unary(
+                '/Maintain/GetWriteReplicas',
+                request_serializer=quorum__registry__pb2.Empty.SerializeToString,
+                response_deserializer=quorum__registry__pb2.Server_book.FromString,
+                )
+        self.GetReadReplicas = channel.unary_unary(
+                '/Maintain/GetReadReplicas',
                 request_serializer=quorum__registry__pb2.Empty.SerializeToString,
                 response_deserializer=quorum__registry__pb2.Server_book.FromString,
                 )
@@ -38,8 +48,22 @@ class MaintainServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetServerList(self, request, context):
-        """/ get the server list for a client who may want to know about existing servers
+    def GetAllReplicas(self, request, context):
+        """/ [debug] get the server list for a client who may want to know about existing servers
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetWriteReplicas(self, request, context):
+        """/ get write servers
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetReadReplicas(self, request, context):
+        """/ get read servers
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -51,10 +75,20 @@ def add_MaintainServicer_to_server(servicer, server):
             'RegisterServer': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterServer,
                     request_deserializer=quorum__registry__pb2.Server_information.FromString,
-                    response_serializer=quorum__registry__pb2.Server_information.SerializeToString,
+                    response_serializer=quorum__registry__pb2.Success.SerializeToString,
             ),
-            'GetServerList': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetServerList,
+            'GetAllReplicas': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetAllReplicas,
+                    request_deserializer=quorum__registry__pb2.Empty.FromString,
+                    response_serializer=quorum__registry__pb2.Server_book.SerializeToString,
+            ),
+            'GetWriteReplicas': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetWriteReplicas,
+                    request_deserializer=quorum__registry__pb2.Empty.FromString,
+                    response_serializer=quorum__registry__pb2.Server_book.SerializeToString,
+            ),
+            'GetReadReplicas': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetReadReplicas,
                     request_deserializer=quorum__registry__pb2.Empty.FromString,
                     response_serializer=quorum__registry__pb2.Server_book.SerializeToString,
             ),
@@ -82,12 +116,12 @@ class Maintain(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/Maintain/RegisterServer',
             quorum__registry__pb2.Server_information.SerializeToString,
-            quorum__registry__pb2.Server_information.FromString,
+            quorum__registry__pb2.Success.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def GetServerList(request,
+    def GetAllReplicas(request,
             target,
             options=(),
             channel_credentials=None,
@@ -97,7 +131,41 @@ class Maintain(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/Maintain/GetServerList',
+        return grpc.experimental.unary_unary(request, target, '/Maintain/GetAllReplicas',
+            quorum__registry__pb2.Empty.SerializeToString,
+            quorum__registry__pb2.Server_book.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetWriteReplicas(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/Maintain/GetWriteReplicas',
+            quorum__registry__pb2.Empty.SerializeToString,
+            quorum__registry__pb2.Server_book.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetReadReplicas(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/Maintain/GetReadReplicas',
             quorum__registry__pb2.Empty.SerializeToString,
             quorum__registry__pb2.Server_book.FromString,
             options, channel_credentials,

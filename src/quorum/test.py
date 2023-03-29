@@ -27,7 +27,7 @@ class PBBP(unittest.TestCase):
         if sys.path[-1] == "primary_backup/nonblocking":
             sys.path.pop()
         sys.path.append("primary_backup/blocking")
-        from registry_server import serve
+        from quorum_registry import serve
 
         p = multiprocessing.Process(target=serve, args=(logger, "[::1]", 1337))
         p.start()
@@ -39,7 +39,7 @@ class PBBP(unittest.TestCase):
         sleep(2)
 
     def test02_run_n_replicas(self):
-        from replica import serve
+        from quorum_replica import serve
 
         processes = []
         # try:

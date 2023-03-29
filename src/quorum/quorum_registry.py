@@ -3,14 +3,17 @@ import logging
 import grpc
 import argparse
 import quorum_registry_pb2, quorum_registry_pb2_grpc, quorum_replica_pb2, quorum_replica_pb2_grpc
+import random
 
 
 class Maintain(quorum_registry_pb2_grpc.MaintainServicer):
-    primary_replica = None
-    registered = quorum_registry_pb2.Server_book()
 
-    def __init__(self, logger):
+    def __init__(self, logger, N:tuple(int, int, int)):
         self.logger = logger
+        self.N = N[0]
+        self.Nr = N[1]
+        self.Nw = N[2]
+        self.registered = quorum_registry_pb2.ServerList()
         super().__init__()
 
     def RegisterServer(self, request, context):
@@ -25,36 +28,35 @@ class Maintain(quorum_registry_pb2_grpc.MaintainServicer):
             for i in self.registered.servers
         ):
             self.logger.warning("Server already registered")
-            return quorum_registry_pb2.Server_information(
-                ip=self.primary_replica.ip, port=self.primary_replica.port
-            )
+            return quorum_registry_pb2.Success(value=False)
 
-        self.registered.servers.add(ip=request.ip, port=request.port)
+        self.registered.servers.add(ip=request.ip, port=request.port)        
+        return quorum_registry_pb2.Success(value=True)
 
-        if self.primary_replica is None:
-            self.primary_replica = quorum_registry_pb2.Server_information(
-                ip=request.ip, port=request.port
-            )
-        else:
-            with grpc.insecure_channel(
-                self.primary_replica.ip + ":" + self.primary_replica.port
-            ) as channel:
-                stub = quorum_replica_pb2_grpc.PrimeraStub(channel)
-                response = stub.RecvReplica(request)
-                self.logger.info(
-                    f"Primary replica informed of new replica: {response.value}"
-                )
-
-        return quorum_registry_pb2.Server_information(
-            ip=self.primary_replica.ip, port=self.primary_replica.port
-        )
-
-    def GetServerList(self, request, context):
+    def GetAllReplicas(self, request, context):
         self.logger.info(
             "SERVER LIST REQUEST FROM %s",
             context.peer(),
         )
         return self.registered
+    
+    def GetWriteReplicas(self, request, context):
+        # choose Nw random servers
+
+        self.logger.info(
+            "SERVER LIST REQUEST FROM %s",
+            context.peer(),
+        )
+        return quorum_registry_pb2.ServerList(random.sample(self.registered.servers, self.Nw))
+    
+    def GetReadReplicas(self, request, context):
+        # choose Nr random servers
+
+        self.logger.info(
+            "SERVER LIST REQUEST FROM %s",
+            context.peer(),
+        )
+        return quorum_registry_pb2.ServerList(random.sample(self.registered.servers, self.Nr))
 
 
 def serve(logger, EXPOSE_IP, PORT, N:tuple(int, int, int)):
@@ -65,7 +67,7 @@ def serve(logger, EXPOSE_IP, PORT, N:tuple(int, int, int)):
 
     port = str(PORT)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=50))
-    quorum_registry_pb2_grpc.add_MaintainServicer_to_server(Maintain(logger), server)
+    quorum_registry_pb2_grpc.add_MaintainServicer_to_server(Maintain(logger, N), server)
     server.add_insecure_port(EXPOSE_IP + ":" + port)  # no TLS moment
     server.start()
 
