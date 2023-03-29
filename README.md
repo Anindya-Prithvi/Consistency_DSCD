@@ -7,3 +7,11 @@ run the following in the root directory when you git pull (for a contributor)
 git config core.hooksPath "./git_hooks"
 ```
 This is a pre-push hook so that untested code is not committed... atleast for pbbp
+
+
+Reamaining tasks:
+1. Check if quorum replicas tell other replicas
+2. Print statements in test before submit
+3. Correct interactive modes in quorum protocol (client mainly)
+4. Add more test cases 
+5. Never take dscd
