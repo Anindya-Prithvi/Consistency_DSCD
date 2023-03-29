@@ -49,7 +49,7 @@ do
 			exit $status
 		fi
 
-		cd src/quorum && python -m unittest -v && cd ..
+		cd quorum && python -m unittest -v && cd ..
 		status=$?
 
 
