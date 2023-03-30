@@ -12,7 +12,7 @@ class Maintain(quorum_registry_pb2_grpc.MaintainServicer):
         self.logger = logger
         if N[0] >= N[1] + N[2]:
             raise ValueError("Invalid number of replicas (>= than read+write))")
-        if N[2]<N[0]/2:
+        if N[2] <= N[0]/2:
             raise ValueError("Invalid number of write replicas (write less than half)")
         self.N = N[0]
         self.Nr = N[1]

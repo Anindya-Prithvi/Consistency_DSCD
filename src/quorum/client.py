@@ -78,16 +78,17 @@ Please choose from the following options:
             )
             return response
 
-    def write_to_replicas(self, file_uuid, filename, content):
+    def write_to_replicas(self, replicas, file_uuid, filename, content):
         responses = []
-        for replica in self.get_write_replicas().servers:
+        # Why randomising everytime?
+        for replica in replicas:
             responses.append(self.write_to_replica(replica, file_uuid, filename, content))
         return responses
 
-    def read_from_replicas(self, file_uuid):
+    def read_from_replicas(self, replicas, file_uuid):
         latest_response = None
         latest_version = datetime.datetime.min
-        for i,replica in enumerate(self.get_read_replicas().servers):
+        for i,replica in enumerate(replicas):
             resp = self.read_from_replica(replica, file_uuid)
             if i==0:
                 latest_response = resp # to save null response
@@ -101,9 +102,9 @@ Please choose from the following options:
                 latest_response = resp
         return latest_response
 
-    def delete_from_replicas(self, file_uuid):
+    def delete_from_replicas(self, replicas, file_uuid):
         responses = []
-        for replica in self.get_write_replicas().servers:
+        for replica in replicas:
             responses.append(self.delete_from_replica(replica, file_uuid))
         return responses
 
@@ -144,16 +145,19 @@ def get_served(logger, REGISTRY_ADDR, OPTIONS):
             # write
 
             # choose a replica
-            logger.info("Choose which replica to write to /^[0-9]+$/:")
-            client.pretty_print_servers()
-            try:
-                replica = int(input())
-                if replica > len(client.KNOWN_SERVERS) or replica < 1:
-                    raise ValueError
-                replica = client.KNOWN_SERVERS[replica - 1]
-            except ValueError:
-                logger.error("Invalid choice")
-                continue
+            # logger.info("Choose which replica to write to /^[0-9]+$/:")
+            
+            # get write replica and print them
+            server_list = client.get_write_replicas().servers
+            client.pretty_print_servers(server_list)
+            # try:
+            #     replica = int(input())
+            #     if replica > len(server_list) or replica < 1:
+            #         raise ValueError
+            #     replica = server_list[replica - 1]
+            # except ValueError:
+            #     logger.error("Invalid choice")
+            #     continue
 
             # get a uuid
             logger.info("Enter UUID (Empty to generate new)")
@@ -179,13 +183,14 @@ def get_served(logger, REGISTRY_ADDR, OPTIONS):
             logger.info("Enter file content")
             content = input()
 
-            # send to replica
+            # send to replicas
 
-            response = client.write_to_replica(replica, file_uuid, filename, content)
-            logger.info(f"Got response from replica {replica.ip}:{replica.port}")
-            logger.info(f"Status: {response.status}")
-            logger.info(f"UUID: {response.uuid}")
-            logger.info(f"Version: {response.version}")
+            response = client.write_to_replicas(server_list, file_uuid, filename, content)
+            for resp in response:
+                # logger.info(f"Got response from replica {replica.ip}:{replica.port}")
+                logger.info(f"Status: {resp.status}")
+                logger.info(f"UUID: {resp.uuid}")
+                logger.info(f"Version: {resp.version}")
 
         elif choice == 2:
             # read
@@ -200,40 +205,46 @@ def get_served(logger, REGISTRY_ADDR, OPTIONS):
                 continue
 
             # choose a replica
-            logger.info("Choose which replica to read from /^[0-9]+$/:")
-            client.pretty_print_servers()
-            try:
-                replica = int(input())
-                if replica > len(client.KNOWN_SERVERS) or replica < 1:
-                    raise ValueError
-                replica = client.KNOWN_SERVERS[replica - 1]
-            except ValueError:
-                logger.error("Invalid choice")
-                continue
+            # logger.info("Choose which replica to read from /^[0-9]+$/:")
+
+            # get read replicas and print them
+            server_list = client.get_read_replicas().servers
+            client.pretty_print_servers(server_list)
+            # try:
+            #     replica = int(input())
+            #     if replica > len(client.KNOWN_SERVERS) or replica < 1:
+            #         raise ValueError
+            #     replica = client.KNOWN_SERVERS[replica - 1]
+            # except ValueError:
+            #     logger.error("Invalid choice")
+            #     continue
 
             # send to replica
 
-            response = client.read_from_replica(replica, file_uuid)
-            logger.info(f"Got response from replica {replica.ip}:{replica.port}")
-            logger.info(f"Status: {response.status}")
-            logger.info(f"Name: {response.name}")
-            logger.info(f"Content: {response.content}")
-            logger.info(f"Version: {response.version}")
+            response = client.read_from_replicas(server_list, file_uuid)
+            for resp in response:
+                # logger.info(f"Got response from replica {replica.ip}:{replica.port}")
+                logger.info(f"Status: {resp.status}")
+                logger.info(f"Name: {resp.name}")
+                logger.info(f"Content: {resp.content}")
+                logger.info(f"Version: {resp.version}")
 
         elif choice == 3:
             # delete
 
             # choose a replica
-            logger.info("Choose which replica to delete from /^[0-9]+$/:")
-            client.pretty_print_servers()
-            try:
-                replica = int(input())
-                if replica > len(client.KNOWN_SERVERS) or replica < 1:
-                    raise ValueError
-                replica = client.KNOWN_SERVERS[replica - 1]
-            except ValueError:
-                logger.error("Invalid choice")
-                continue
+            # logger.info("Choose which replica to delete from /^[0-9]+$/:")
+
+            server_list = client.get_write_replicas().servers
+            client.pretty_print_servers(server_list)
+            # try:
+            #     replica = int(input())
+            #     if replica > len(client.KNOWN_SERVERS) or replica < 1:
+            #         raise ValueError
+            #     replica = client.KNOWN_SERVERS[replica - 1]
+            # except ValueError:
+            #     logger.error("Invalid choice")
+            #     continue
 
             # get a uuid
             logger.info("Enter UUID (Required)")
@@ -247,10 +258,10 @@ def get_served(logger, REGISTRY_ADDR, OPTIONS):
                 continue
 
             # send to replica
-            response = client.delete_from_replica(replica, file_uuid)
-
-            logger.info(f"Got response from replica {replica.ip}:{replica.port}")
-            logger.info(f"Status: {response.status}")
+            response = client.delete_from_replicas(server_list, file_uuid)
+            for resp in response:
+                # logger.info(f"Got response from replica {replica.ip}:{replica.port}")
+                logger.info(f"Status: {resp.status}")
 
         elif choice == 4:
             # print known uuids
@@ -262,6 +273,18 @@ def get_served(logger, REGISTRY_ADDR, OPTIONS):
             logger.info("Known servers:")
             client.pretty_print_servers()
         elif choice == 6:
+            # Ask registry for write replicas
+            logger.info("Write replicas:")
+            client.pretty_print_servers(client.nw.servers)
+        elif choice == 7:
+            # Ask registry for read replicas
+            logger.info("Read replicas:")
+            client.pretty_print_servers(client.nr.servers)
+        elif choice == 8:
+            # Ask registry for all replicas
+            logger.info("All replicas:")
+            client.pretty_print_servers(client.get_all_replicas().servers)
+        elif choice == 9:
             # exit
             logger.info("Exiting...")
             exit(0)
