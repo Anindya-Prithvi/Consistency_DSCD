@@ -115,9 +115,9 @@ class QUORUM(unittest.TestCase):
         # st = time.time()
         resps = c1.write_to_replicas(c1.nw.servers, file_uuid, filename, content)
         for resp in resps:
-            assert resp.status == "SUCCESS", "Write failed"
-            assert resp.uuid == file_uuid, "UUID mismatch"
-            assert len(resp.version) > 0, "Version not set"
+            assert resp[0].status == "SUCCESS", "Write failed"
+            assert resp[0].uuid == file_uuid, "UUID mismatch"
+            assert len(resp[0].version) > 0, "Version not set"
         # can at most print resp.version, nothing to assert
         # et = time.time()
 
@@ -145,9 +145,9 @@ class QUORUM(unittest.TestCase):
         # st = time.time()
         resps = c1.write_to_replicas(c1.nw.servers, file_uuid, filename, content)
         for resp in resps:
-            assert resp.status == "SUCCESS", "Write failed"
-            assert resp.uuid == file_uuid, "UUID mismatch"
-            assert len(resp.version) > 0, "Version not set"
+            assert resp[0].status == "SUCCESS", "Write failed"
+            assert resp[0].uuid == file_uuid, "UUID mismatch"
+            assert len(resp[0].version) > 0, "Version not set"
         # can at most print resp.version, nothing to assert
         # et = time.time()
 
