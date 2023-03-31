@@ -55,7 +55,7 @@ Please choose from the following options:
                     content=content,
                 )
             )
-            return response
+            return [response, f"{replica.ip}:{replica.port}"]
 
     def read_from_replica(self, replica, file_uuid):
         with grpc.insecure_channel(f"{replica.ip}:{replica.port}") as channel:
@@ -175,10 +175,10 @@ def get_served(logger, REGISTRY_ADDR):
                 server_list, file_uuid, filename, content
             )
             for resp in response:
-                # logger.info(f"Got response from replica {replica.ip}:{replica.port}")
-                logger.info(f"Status: {resp.status}")
-                logger.info(f"UUID: {resp.uuid}")
-                logger.info(f"Version: {resp.version}")
+                logger.info(f"Got response from replica" + resp[1])
+                logger.info(f"Status: {resp[0].status}")
+                logger.info(f"UUID: {resp[0].uuid}")
+                logger.info(f"Version: {resp[0].version}")
 
         elif choice == 2:
             # read
