@@ -20,7 +20,7 @@ $writeServers = Read-Host -Prompt "Enter number of write replicas"
 # ask for total replicas
 $numServers = Read-Host -Prompt "Enter total number of replicas"
 
-$pidList += Start-Process python "quorum_registry.py" -ArgumentList $numServers $readServers $writeServers -PassThru -WindowStyle $bgServer
+$pidList += Start-Process python "quorum_registry.py --n $numServers --nr $readServers --nw $writeServers" -PassThru -WindowStyle $bgServer
 
 # run servers
 for ($i = 0; $i -lt $numServers; $i++) {

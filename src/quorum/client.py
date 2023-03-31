@@ -197,12 +197,11 @@ def get_served(logger, REGISTRY_ADDR):
             server_list = client.get_read_replicas().servers
 
             response = client.read_from_replicas(server_list, file_uuid)
-            for resp in response:
-                # logger.info(f"Got response from replica {replica.ip}:{replica.port}")
-                logger.info(f"Status: {resp.status}")
-                logger.info(f"Name: {resp.name}")
-                logger.info(f"Content: {resp.content}")
-                logger.info(f"Version: {resp.version}")
+            # logger.info(f"Got response from replica {replica.ip}:{replica.port}")
+            logger.info(f"Status: {resp.status}")
+            logger.info(f"Name: {resp.name}")
+            logger.info(f"Content: {resp.content}")
+            logger.info(f"Version: {resp.version}")
 
         elif choice == 3:
             # delete
