@@ -176,7 +176,7 @@ class QUORUM(unittest.TestCase):
     def test09_run_client_read_deleted(self):
         # using first client
         c1 = self.client_list[0]
-        latest_file = c1.read_from_replicas(self.client_files[0][0][0])
+        latest_file = c1.read_from_replicas(c1.nr.servers, self.client_files[0][0][0])
         # assert latest_file.status == "NOT_FOUND", "Read succeeded on deleted file (bad)"
         # no assertion possible, client_read quorum takes arbitrary quorums, some may succeed, some wont
         assert latest_file.status != "", "No status message"
