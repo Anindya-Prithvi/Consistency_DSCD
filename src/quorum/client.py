@@ -219,7 +219,6 @@ def get_served(logger, REGISTRY_ADDR, OPTIONS):
             #     logger.error("Invalid choice")
             #     continue
 
-            # send to replica
 
             response = client.read_from_replicas(server_list, file_uuid)
             for resp in response:
