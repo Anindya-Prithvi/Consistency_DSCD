@@ -95,9 +95,9 @@ if __name__ == "__main__":
     )
     agr.add_argument("--port", type=int, help="port number", default=PORT)
     agr.add_argument("--log", type=str, help="log file name", default=LOGFILE)
-    agr.add_argument("--n", type=int, help="number of replicas", default=3)
+    agr.add_argument("--n", type=int, help="number of replicas", default=4)
     agr.add_argument("--nr", type=int, help="number of read replicas", default=3)
-    agr.add_argument("--nw", type=int, help="number of replicas", default=3)
+    agr.add_argument("--nw", type=int, help="number of write replicas", default=2)
 
     args = agr.parse_args()
 
