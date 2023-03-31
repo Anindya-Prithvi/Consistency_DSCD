@@ -11,10 +11,16 @@ else {
     $bgServer = "normal"
 }
 
-$pidList += Start-Process python "quorum_registry.py" -PassThru -WindowStyle $bgServer
+# ask for read replicas
+$readServers = Read-Host -Prompt "Enter number of read replicas"
 
-# ask for number of servers to run
-$numServers = Read-Host -Prompt "Enter number of servers to run"
+# ask for write replicas
+$writeServers = Read-Host -Prompt "Enter number of write replicas"
+
+# ask for total replicas
+$numServers = Read-Host -Prompt "Enter total number of replicas"
+
+$pidList += Start-Process python "quorum_registry.py" -ArgumentList $numServers $readServers $writeServers -PassThru -WindowStyle $bgServer
 
 # run servers
 for ($i = 0; $i -lt $numServers; $i++) {

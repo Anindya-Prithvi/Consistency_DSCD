@@ -84,21 +84,21 @@ class QUORUM(unittest.TestCase):
         # using first client
         c1 = self.client_list[0]
         replica_list = c1.get_read_replicas()
-        # print(f"Read replicas: {replica_list}")
+        print(f"Read replicas: {replica_list}")
         assert len(replica_list.servers) == self.nr, "No read replicas found"
 
     def test03_run_client1_get_write_replicas(self):
         # using first client
         c1 = self.client_list[0]
         replica_list = c1.get_write_replicas()
-        # print(f"Write replicas: {replica_list}")
+        print(f"Write replicas: {replica_list}")
         assert len(replica_list.servers) == self.nw, "No write replicas found"
 
     def test03_run_client1_get_all_replicas(self):
         # using first client
         c1 = self.client_list[0]
         replica_list = c1.get_all_replicas()
-        # print(f"All replicas: {replica_list}")
+        print(f"All replicas: {replica_list}")
         assert len(replica_list.servers) == self.n, "No replicas found"
 
     def test04_run_client_write_nw(self):
