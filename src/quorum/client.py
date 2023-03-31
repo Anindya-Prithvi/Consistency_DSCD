@@ -17,11 +17,10 @@ Please choose from the following options:
     3. Delete
     ## utility options ##
     4. Print known UUIDs
-    5. Print known servers
-    6. Ask Registry for write replicas
-    7. Ask Registry for read replicas
-    8. Ask for all replicas [debug]
-    9. Exit
+    5. Ask Registry for write replicas
+    6. Ask Registry for read replicas
+    7. Ask for all replicas [debug]
+    8. Exit
 """
         self.UUID_STORE = set()
 
@@ -198,10 +197,10 @@ def get_served(logger, REGISTRY_ADDR):
 
             response = client.read_from_replicas(server_list, file_uuid)
             # logger.info(f"Got response from replica {replica.ip}:{replica.port}")
-            logger.info(f"Status: {resp.status}")
-            logger.info(f"Name: {resp.name}")
-            logger.info(f"Content: {resp.content}")
-            logger.info(f"Version: {resp.version}")
+            logger.info(f"Status: {response.status}")
+            logger.info(f"Name: {response.name}")
+            logger.info(f"Content: {response.content}")
+            logger.info(f"Version: {response.version}")
 
         elif choice == 3:
             # delete
@@ -232,24 +231,20 @@ def get_served(logger, REGISTRY_ADDR):
             for uuid_i in client.UUID_STORE:
                 print(uuid_i)
         elif choice == 5:
-            # print known servers
-            logger.info("Known servers:")
-            client.pretty_print_servers()
-        elif choice == 6:
             # Ask registry for write replicas
             client.get_write_replicas()
             logger.info("Write replicas:")
             client.pretty_print_servers(client.nw.servers)
-        elif choice == 7:
+        elif choice == 6:
             # Ask registry for read replicas
             client.get_read_replicas()
             logger.info("Read replicas:")
             client.pretty_print_servers(client.nr.servers)
-        elif choice == 8:
+        elif choice == 7:
             # Ask registry for all replicas
             logger.info("All replicas:")
             client.pretty_print_servers(client.get_all_replicas().servers)
-        elif choice == 9:
+        elif choice == 8:
             # exit
             logger.info("Exiting...")
             exit(0)
