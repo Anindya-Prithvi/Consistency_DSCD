@@ -131,9 +131,9 @@ class Serve(replica_pb2_grpc.ServeServicer):
             self.pending_requests.put((deepcopy(request), "write"))
 
             return replica_pb2.FileObject(
-                    status="SUCCESS", uuid=request.uuid, version=version
-                )
-            
+                status="SUCCESS", uuid=request.uuid, version=version
+            )
+
         else:
             with grpc.insecure_channel(
                 self.PRIMARY_SERVER.ip + ":" + self.PRIMARY_SERVER.port
@@ -194,10 +194,10 @@ class Serve(replica_pb2_grpc.ServeServicer):
             self.pending_requests.put((deepcopy(request), "delete"))
 
             return replica_pb2.FileObject(
-                    status="SUCCESS",
-                    # version=version # not needed
-                )
-            
+                status="SUCCESS",
+                # version=version # not needed
+            )
+
         else:
             with grpc.insecure_channel(
                 self.PRIMARY_SERVER.ip + ":" + self.PRIMARY_SERVER.port
@@ -244,9 +244,12 @@ def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
 
     UUID_MAP = {}
     REPLICAS = registry_server_pb2.Server_book()
-    main_serve = Serve(logger, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS, _server_id)
+    main_serve = Serve(
+        logger, IS_PRIMARY, PRIMARY_SERVER, UUID_MAP, REPLICAS, _server_id
+    )
     replica_pb2_grpc.add_ServeServicer_to_server(
-        main_serve, server,
+        main_serve,
+        server,
     )
 
     if IS_PRIMARY:
@@ -270,12 +273,22 @@ def serve(logger, REGISTRY_ADDR, _server_id, EXPOSE_IP, PORT):
         request, operation = main_serve.pending_requests.get(block=True)
         if operation == "write":
             # send to all replicas
-            ff = non_block_write_through.map(SendToBackups, [request] * len(main_serve.REPLICAS.servers),main_serve.REPLICAS.servers, ["write"] * len(main_serve.REPLICAS.servers))
+            ff = non_block_write_through.map(
+                SendToBackups,
+                [request] * len(main_serve.REPLICAS.servers),
+                main_serve.REPLICAS.servers,
+                ["write"] * len(main_serve.REPLICAS.servers),
+            )
             if reduce(lambda x, y: x and y, ff):
                 print("[PRIMERA], ALL BACKUPS RECEIVED")
         elif operation == "delete":
             # send to all replicas
-            ff = non_block_write_through.map(SendToBackups, [request] * len(main_serve.REPLICAS.servers), main_serve.REPLICAS.servers,["delete"] * len(main_serve.REPLICAS.servers))
+            ff = non_block_write_through.map(
+                SendToBackups,
+                [request] * len(main_serve.REPLICAS.servers),
+                main_serve.REPLICAS.servers,
+                ["delete"] * len(main_serve.REPLICAS.servers),
+            )
             if reduce(lambda x, y: x and y, ff):
                 print("[PRIMERA], ALL BACKUPS RECEIVED")
 

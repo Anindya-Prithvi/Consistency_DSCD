@@ -12,7 +12,6 @@ logger = logging.getLogger("test")
 logger.setLevel(logging.INFO)
 
 
-
 class PBBP(unittest.TestCase):
     n = 50
     process_list = []
@@ -21,7 +20,8 @@ class PBBP(unittest.TestCase):
 
     def test01_launch_registry_server(self):
         # check path has blocking
-        if sys.path[0].find("blocking") == -1: print("Not running from blocking directory")
+        if sys.path[0].find("blocking") == -1:
+            print("Not running from blocking directory")
         # running from project_dir/src/primary_backup (assumed pre-push)
         # so we need to add blocking to sys.path
         if sys.path[-1] == "nonblocking":
@@ -32,7 +32,7 @@ class PBBP(unittest.TestCase):
         p = multiprocessing.Process(target=serve, args=(logger, "[::1]", 1337))
         p.start()
         self.process_list.append(p)
-        
+
         # print return value of serve
 
         print("Waiting for registry server to come up...[2seconds]")
@@ -65,7 +65,6 @@ class PBBP(unittest.TestCase):
 
         for p in processes:
             assert p.is_alive(), "Replica server not launched"
-        
 
     def test03_run_client(self):
         from client import Client

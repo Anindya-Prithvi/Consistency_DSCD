@@ -7,12 +7,11 @@ import random
 
 
 class Maintain(quorum_registry_pb2_grpc.MaintainServicer):
-
     def __init__(self, logger, N):
         self.logger = logger
         if N[0] >= N[1] + N[2]:
             raise ValueError("Invalid number of replicas (>= than read+write))")
-        if N[2] <= N[0]/2:
+        if N[2] <= N[0] / 2:
             raise ValueError("Invalid number of write replicas (write less than half)")
         self.N = N[0]
         self.Nr = N[1]
@@ -34,7 +33,7 @@ class Maintain(quorum_registry_pb2_grpc.MaintainServicer):
             self.logger.warning("Server already registered")
             return quorum_registry_pb2.Success(value=False)
 
-        self.registered.servers.add(ip=request.ip, port=request.port)        
+        self.registered.servers.add(ip=request.ip, port=request.port)
         return quorum_registry_pb2.Success(value=True)
 
     def GetAllReplicas(self, request, context):
@@ -43,7 +42,7 @@ class Maintain(quorum_registry_pb2_grpc.MaintainServicer):
             context.peer(),
         )
         return self.registered
-    
+
     def GetWriteReplicas(self, request, context):
         # choose Nw random servers
 
@@ -51,8 +50,10 @@ class Maintain(quorum_registry_pb2_grpc.MaintainServicer):
             "SERVER LIST REQUEST FROM %s",
             context.peer(),
         )
-        return quorum_registry_pb2.Server_book(servers = random.sample(self.registered.servers, self.Nw))
-    
+        return quorum_registry_pb2.Server_book(
+            servers=random.sample(self.registered.servers, self.Nw)
+        )
+
     def GetReadReplicas(self, request, context):
         # choose Nr random servers
 
@@ -60,7 +61,9 @@ class Maintain(quorum_registry_pb2_grpc.MaintainServicer):
             "SERVER LIST REQUEST FROM %s",
             context.peer(),
         )
-        return quorum_registry_pb2.Server_book(servers = random.sample(self.registered.servers, self.Nr))
+        return quorum_registry_pb2.Server_book(
+            servers=random.sample(self.registered.servers, self.Nr)
+        )
 
 
 def serve(logger, EXPOSE_IP, PORT, N):

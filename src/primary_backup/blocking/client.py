@@ -74,20 +74,18 @@ Please choose from the following options:
         print(self.UUID_STORE)
 
 
-def get_served(logger, REGISTRY_ADDR, OPTIONS):
+def get_served(logger, REGISTRY_ADDR):
     # fetch replicas from registry server
     # no need to do it again since no new replicas are assumed to be added
 
     # create client object
-    client = Client(logger, REGISTRY_ADDR, OPTIONS)
+    client = Client(logger, REGISTRY_ADDR)
 
     while True:
         # give user options of read write and delete
-        logger.info(OPTIONS)
+        client.print_options()
         try:
             choice = int(input("Enter your choice: "))
-            if choice > 6 or choice < 1:
-                raise ValueError
         except ValueError:
             logger.error("Invalid choice")
             continue

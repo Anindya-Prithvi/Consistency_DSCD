@@ -20,7 +20,8 @@ class PBNP(unittest.TestCase):
 
     def test01_launch_registry_server(self):
         # check path has blocking
-        if sys.path[0].find("nonblocking") == -1: print("Not running from blocking directory")
+        if sys.path[0].find("nonblocking") == -1:
+            print("Not running from blocking directory")
         # running from project_dir/src/primary_backup (assumed pre-push)
         # so we need to add primary_blocking/blocking to sys.path
         if sys.path[-1] == "blocking":
@@ -32,7 +33,7 @@ class PBNP(unittest.TestCase):
         p = multiprocessing.Process(target=serve, args=(logger, "[::1]", 1337))
         p.start()
         self.process_list.append(p)
-        
+
         # print return value of serve
 
         print("Waiting for registry server to come up...[2seconds]")
@@ -59,7 +60,6 @@ class PBNP(unittest.TestCase):
         for p in processes:
             p.start()
             self.process_list.append(p)
-        
 
         print("Waiting for all replicas to come up...[5seconds]")
         sleep(5)
@@ -93,7 +93,9 @@ class PBNP(unittest.TestCase):
         # can at most print resp.version, nothing to assert
         et = time.time()
 
-        print(f"Write acknoledgement has been received within {et-st} but all replicas may not have written, so sleep [10] ")
+        print(
+            f"Write acknoledgement has been received within {et-st} but all replicas may not have written, so sleep [10] "
+        )
         sleep(10)
 
     def test05_run_client_read_all(self):
@@ -127,7 +129,9 @@ class PBNP(unittest.TestCase):
         et = time.time()
         # can at most print resp.version, nothing to assert
 
-        print(f"Write acknoledgement has been received within {et-st} but all replicas may not have written, so sleep [10] ")
+        print(
+            f"Write acknoledgement has been received within {et-st} but all replicas may not have written, so sleep [10] "
+        )
         sleep(10)
 
     def test07_run_client_read_all(self):

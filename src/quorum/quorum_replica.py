@@ -13,9 +13,7 @@ import datetime
 
 
 class Serve(quorum_replica_pb2_grpc.ServeServicer):
-    def __init__(
-        self, logger, UUID_MAP, _server_id
-    ):
+    def __init__(self, logger, UUID_MAP, _server_id):
         self.logger = logger
         self.UUID_MAP = UUID_MAP
         self._server_id = _server_id
@@ -27,16 +25,19 @@ class Serve(quorum_replica_pb2_grpc.ServeServicer):
         uuid_exists = request.uuid in self.UUID_MAP
         # Scenario 4
         if uuid_exists and self.UUID_MAP[request.uuid][0] == "":
-            return quorum_replica_pb2.FileObject(status="DELETED FILE CANNOT BE UPDATED")
+            return quorum_replica_pb2.FileObject(
+                status="DELETED FILE CANNOT BE UPDATED"
+            )
         fixfilename = f"'{request.name}'"
         # fixfilename = fixfilename.replace("/", "_") # sanitizer
         # Scenario 2, check if file exists
         if not uuid_exists and os.path.exists(
             "replicas/" + str(self._server_id) + "/" + fixfilename
         ):
-            return quorum_replica_pb2.FileObject(status="FILE WITH SAME NAME ALREADY EXISTS")
+            return quorum_replica_pb2.FileObject(
+                status="FILE WITH SAME NAME ALREADY EXISTS"
+            )
 
-    
         # write to file
         fobj = os.open(
             "replicas/" + str(self._server_id) + "/" + fixfilename,
@@ -48,7 +49,7 @@ class Serve(quorum_replica_pb2_grpc.ServeServicer):
         # add to map
         # Calculate version
         version = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        
+
         self.UUID_MAP[request.uuid] = (fixfilename, version)
         # send to backups using thread worker pool
 
@@ -56,7 +57,6 @@ class Serve(quorum_replica_pb2_grpc.ServeServicer):
         return quorum_replica_pb2.FileObject(
             status="SUCCESS", uuid=request.uuid, version=version
         )
-
 
     def Read(self, request, context):
         self.logger.info("READ REQUEST FROM %s", context.peer())
@@ -98,7 +98,6 @@ class Serve(quorum_replica_pb2_grpc.ServeServicer):
         if filename == "":
             return quorum_replica_pb2.FileObject(status="FILE ALREADY DELETED")
 
-    
         # delete file, scenario 2
         os.remove("replicas/" + str(self._server_id) + "/" + filename)
 
