@@ -125,7 +125,7 @@ class QUORUM(unittest.TestCase):
     def test05_run_client_read_nr(self):
         # using first client
         c1 = self.client_list[0]
-        latest_file = c1.read_from_replicas(self.client_files[0][0][0])
+        latest_file = c1.read_from_replicas(c1.nr.servers, self.client_files[0][0][0])
         assert latest_file.status == "SUCCESS", "Read failed"
         assert latest_file.name.find(self.client_files[0][0][1])!=-1, f"Filename mismatch, got {latest_file.name}"
         assert latest_file.content == self.client_files[0][0][2], "Content mismatch"
@@ -143,7 +143,7 @@ class QUORUM(unittest.TestCase):
         self.client_files[0].append((file_uuid, filename, content))
 
         # st = time.time()
-        resps = c1.write_to_replicas(file_uuid, filename, content)
+        resps = c1.write_to_replicas(c1.nw.servers, file_uuid, filename, content)
         for resp in resps:
             assert resp.status == "SUCCESS", "Write failed"
             assert resp.uuid == file_uuid, "UUID mismatch"
@@ -155,7 +155,7 @@ class QUORUM(unittest.TestCase):
     def test07_run_client_read_nr_two(self):
         # using first client
         c1 = self.client_list[0]
-        latest_file = c1.read_from_replicas(self.client_files[0][1][0])
+        latest_file = c1.read_from_replicas(c1.nr.servers, self.client_files[0][1][0])
         assert latest_file.status == "SUCCESS", "Read failed"
         assert latest_file.name.find(self.client_files[0][1][1])!=-1, f"Filename mismatch, got {latest_file.name}"
         assert latest_file.content == self.client_files[0][1][2], "Content mismatch"
@@ -164,7 +164,7 @@ class QUORUM(unittest.TestCase):
     def test08_run_client_delete_one(self):
         # using first client
         c1 = self.client_list[0]
-        resps = c1.delete_from_replicas(self.client_files[0][0][0])
+        resps = c1.delete_from_replicas(c1.nw.servers, self.client_files[0][0][0])
         count_success = 0
         for resp in resps:
             # cannot assert on status
