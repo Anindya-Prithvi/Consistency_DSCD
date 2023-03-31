@@ -101,7 +101,7 @@ class PBBP(unittest.TestCase):
         for replica in c1.KNOWN_SERVERS:
             resp = c1.read_from_replica(replica, self.client_files[0][0][0])
             # pretty stupid to write on stdout, but ok
-            # print(resp)
+            print(resp)
             assert resp.status == "SUCCESS", "Write failed"
             assert (
                 resp.name.find(self.client_files[0][0][1]) != -1
@@ -134,7 +134,7 @@ class PBBP(unittest.TestCase):
         for replica in c1.KNOWN_SERVERS:
             resp = c1.read_from_replica(replica, self.client_files[0][1][0])
             # pretty stupid to write on stdout, but ok
-            # print(resp)
+            print(resp)
             assert resp.status == "SUCCESS", "Write failed"
             assert resp.name.find(self.client_files[0][1][1]) != -1, "Name mismatch"
             assert (
@@ -157,7 +157,7 @@ class PBBP(unittest.TestCase):
         for replica in c1.KNOWN_SERVERS:
             resp = c1.read_from_replica(replica, self.client_files[0][0][0])
             # pretty stupid to write on stdout, but ok
-            # print(resp)
+            print(resp)
             assert (
                 resp.status == "FILE ALREADY DELETED"
             ), f"Read succeeded (this is bad), got {resp.status}"
