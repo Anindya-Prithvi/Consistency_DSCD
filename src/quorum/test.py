@@ -113,7 +113,7 @@ class QUORUM(unittest.TestCase):
         self.client_files[0].append((file_uuid, filename, content))
 
         # st = time.time()
-        resps = c1.write_to_replicas(file_uuid, filename, content)
+        resps = c1.write_to_replicas(c1.nw.servers, file_uuid, filename, content)
         for resp in resps:
             assert resp.status == "SUCCESS", "Write failed"
             assert resp.uuid == file_uuid, "UUID mismatch"
