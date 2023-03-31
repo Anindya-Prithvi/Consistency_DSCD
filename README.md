@@ -10,8 +10,5 @@ This is a pre-push hook so that untested code is not committed... atleast for pb
 
 
 Reamaining tasks:
-1. Check if quorum replicas tell other replicas
-2. Print statements in test before submit
-3. Correct interactive modes in quorum protocol (client mainly)
-4. Add more test cases 
-5. Never take dscd
+1. Add more test cases 
+2. Never take dscd
